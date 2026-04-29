@@ -18,8 +18,8 @@ export default function StudentOverridesPage() {
 
       <div className="card height-auto">
         <div className="card-body">
-          <h3 className="mb-3">Overrides</h3>
-          <p className="mb-0 text-muted">Student overrides will be added here.</p>
+          <h3 className="mb-3">Student Dept/Level Overrides</h3>
+          <p className="mb-0 text-muted">Use this page to override a student's department or level assignment when the default import is wrong.</p>
         </div>
       </div>
     </>

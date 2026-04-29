@@ -28,8 +28,8 @@ const userLinks = [
 const studentLinks = [
   { label: "View Student", href: "/users/students" },
   { label: "Bulk Upload", href: "/users/students/bulk-upload" },
-  { label: "Overrides", href: "/users/students/overrides" },
-  { label: "Final Courses", href: "/users/students/final-courses" },
+  { label: "Student dept/level", href: "/users/students/overrides" },
+  { label: "Student Courses", href: "/users/students/student-courses" },
 ] as const;
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -211,7 +211,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </button>
                     <ul className={`sub-group-menu ${studentsOpen ? "sub-group-active" : ""}`}>
                       {studentLinks.map((item) => {
-                        const active = isRouteActive(item.href);
+                        const active = item.href === "/users/students" ? pathname === item.href : isRouteActive(item.href);
 
                         return (
                           <li className="nav-item" key={item.href}>

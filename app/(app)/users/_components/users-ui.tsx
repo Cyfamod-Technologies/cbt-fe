@@ -391,7 +391,7 @@ export function StudentsPage() {
                 Overrides
               </button>
               <button type="button" className="btn btn-lg btn-warning" disabled>
-                Final Courses
+                Student Courses
               </button>
             </div>
           </div>
