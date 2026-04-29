@@ -4357,6 +4357,71 @@ ul {
 .sidebar-color {
   background-color: #042954;
 }
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item > .nav-link {
+  gap: 0;
+  padding: 14px 28px;
+  border-left: 0;
+  background-color: transparent;
+}
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item > .nav-link span {
+  color: #b7c2ce;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item > .nav-link:hover,
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item > .nav-link.menu-active,
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item.active > .nav-link {
+  background-color: #051f3e;
+}
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item > .nav-link:hover span,
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item > .nav-link.menu-active span,
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item.active > .nav-link span {
+  color: #ffffff;
+}
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .sidebar-nav-item > .nav-link {
+  display: flex;
+  justify-content: space-between;
+}
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .sidebar-nav-item > .nav-link:after {
+  right: 28px;
+  color: #ffa901;
+}
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .sidebar-nav-item.active > .nav-link:after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item .sub-group-menu {
+  background-color: #031d39;
+  padding: 6px 0;
+}
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item .sub-group-menu > .nav-item .nav-link {
+  padding: 10px 28px 10px 52px;
+  background-color: transparent;
+}
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item .sub-group-menu > .nav-item .nav-link span {
+  color: #d3dbe5;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item .sub-group-menu > .nav-item .nav-link:hover,
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item .sub-group-menu > .nav-item .nav-link.menu-active {
+  background-color: #042954;
+}
+
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item .sub-group-menu > .nav-item .nav-link:hover span,
+.sidebar-menu-one .sidebar-menu-content .nav-sidebar-menu.cbt-sidebar-menu > .nav-item .sub-group-menu > .nav-item .nav-link.menu-active span {
+  color: #ffa901;
+}
 .bg-gradient-fb {
   background: -webkit-gradient(linear, left top, right top, from(#546ca9), to(#5c77bc));
   background: -webkit-linear-gradient(left, #546ca9, #5c77bc);

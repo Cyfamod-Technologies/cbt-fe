@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import {
+  addDepartmentLevel,
   createDepartment,
   createSemester,
   createSession,
@@ -10,6 +11,7 @@ import {
   listDepartments,
   listSemesters,
   listSessions,
+  removeDepartmentLevel,
   setCurrentSemester,
   setCurrentSession,
   type AcademicSession,
@@ -142,9 +144,11 @@ export function SessionsManagementPage() {
 
 export function SemestersManagementPage() {
   const { user } = useAuth();
+  const [sessions, setSessions] = useState<AcademicSession[]>([]);
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [settings, setSettings] = useState<SchoolSettings | null>(null);
   const [name, setName] = useState("");
+  const [sessionId, setSessionId] = useState("");
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
@@ -152,9 +156,15 @@ export function SemestersManagementPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [semesterData, settingsData] = await Promise.all([listSemesters(), getSchoolSettings()]);
+      const [sessionData, semesterData, settingsData] = await Promise.all([
+        listSessions(),
+        listSemesters(),
+        getSchoolSettings(),
+      ]);
+      setSessions(sessionData);
       setSemesters(semesterData);
       setSettings(settingsData);
+      setSessionId((current) => current || String(settingsData.current_session_id || sessionData[0]?.id || ""));
     } catch (error) {
       setFeedback(toDanger(error, "Unable to load semesters."));
     } finally {
@@ -170,7 +180,7 @@ export function SemestersManagementPage() {
     event.preventDefault();
     await runAction(
       async () => {
-        await createSemester({ name: name.trim() });
+        await createSemester({ name: name.trim(), session_id: Number(sessionId) });
         setName("");
       },
       "Semester created.",
@@ -196,6 +206,20 @@ export function SemestersManagementPage() {
       <div className="row">
         <div className="col-lg-4 col-12">
           <FormCard title="Create Semester" onSubmit={submit} disabled={!canManageCatalog}>
+            <label>Session</label>
+            <select
+              className="form-control"
+              value={sessionId}
+              onChange={(event) => setSessionId(event.target.value)}
+              required
+            >
+              <option value="">Select Session</option>
+              {sessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {session.name}
+                </option>
+              ))}
+            </select>
             <label>Semester Name</label>
             <input
               className="form-control"
@@ -213,11 +237,12 @@ export function SemestersManagementPage() {
           <TableCard
             title="All Semesters"
             loading={loading}
-            headers={["Name", "Status", "Current", "Action"]}
+            headers={["Name", "Session", "Status", "Current", "Action"]}
             rows={semesters.map((semester) => {
               const isCurrent = settings?.current_semester_id === semester.id;
               return [
                 semester.name,
+                semester.session?.name || "",
                 semester.status,
                 isCurrent ? <span className="badge badge-success">Current</span> : "No",
                 isCurrent ? (
@@ -245,6 +270,7 @@ export function DepartmentsManagementPage() {
   const { user } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
   const [form, setForm] = useState({ name: "", code: "" });
+  const [levelForm, setLevelForm] = useState({ departmentId: "", name: "" });
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
@@ -280,6 +306,30 @@ export function DepartmentsManagementPage() {
     );
   };
 
+  const submitLevel = async (event: FormEvent) => {
+    event.preventDefault();
+    await runAction(
+      async () => {
+        await addDepartmentLevel(Number(levelForm.departmentId), { name: levelForm.name.trim() });
+        setLevelForm({ departmentId: levelForm.departmentId, name: "" });
+      },
+      "Level added to department.",
+      load,
+      setFeedback,
+    );
+  };
+
+  const detachLevel = async (departmentId: number, levelId: number) => {
+    await runAction(
+      async () => {
+        await removeDepartmentLevel(departmentId, levelId);
+      },
+      "Level removed from department.",
+      load,
+      setFeedback,
+    );
+  };
+
   return (
     <ManagementShell title="Departments" current="Departments">
       <FeedbackAlert feedback={feedback} />
@@ -305,21 +355,92 @@ export function DepartmentsManagementPage() {
               Save Department
             </button>
           </FormCard>
+
+          <FormCard title="Add Level to Department" onSubmit={submitLevel} disabled={!canManageCatalog}>
+            <label>Department</label>
+            <select
+              className="form-control"
+              value={levelForm.departmentId}
+              onChange={(event) =>
+                setLevelForm((current) => ({ ...current, departmentId: event.target.value }))
+              }
+              required
+            >
+              <option value="">Select Department</option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+            <label className="mt-3">Level Name</label>
+            <input
+              className="form-control"
+              placeholder="ND I"
+              value={levelForm.name}
+              onChange={(event) => setLevelForm((current) => ({ ...current, name: event.target.value }))}
+              required
+            />
+            <button type="submit" className="btn btn-primary mt-3">
+              Add Level
+            </button>
+          </FormCard>
         </div>
         <div className="col-lg-8 col-12">
           <TableCard
             title="All Departments"
             loading={loading}
-            headers={["Name", "Code", "Status"]}
+            headers={["Name", "Code", "Levels", "Status"]}
             rows={departments.map((department) => [
               department.name,
               department.code || "",
+              <LevelChips
+                key="levels"
+                department={department}
+                canManage={canManageCatalog}
+                onRemove={detachLevel}
+              />,
               department.status,
             ])}
           />
         </div>
       </div>
     </ManagementShell>
+  );
+}
+
+function LevelChips({
+  department,
+  canManage,
+  onRemove,
+}: {
+  department: Department;
+  canManage: boolean;
+  onRemove: (departmentId: number, levelId: number) => void;
+}) {
+  const levels = department.levels ?? [];
+
+  if (levels.length === 0) {
+    return <span className="text-muted">No levels</span>;
+  }
+
+  return (
+    <div className="department-level-list">
+      {levels.map((level) => (
+        <span className="department-level-chip" key={level.id}>
+          <span>{level.name}</span>
+          {canManage ? (
+            <button
+              type="button"
+              aria-label={`Remove ${level.name} from ${department.name}`}
+              onClick={() => onRemove(department.id, level.id)}
+            >
+              x
+            </button>
+          ) : null}
+        </span>
+      ))}
+    </div>
   );
 }
 

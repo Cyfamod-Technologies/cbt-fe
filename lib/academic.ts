@@ -11,8 +11,10 @@ export interface AcademicSession {
 export interface Semester {
   id: number;
   school_id: number;
+  session_id: number;
   name: string;
   status: string;
+  session?: AcademicSession;
 }
 
 export interface Department {
@@ -21,6 +23,7 @@ export interface Department {
   name: string;
   code: string | null;
   status: string;
+  levels?: Level[];
 }
 
 export interface Level {
@@ -77,7 +80,7 @@ export async function listSemesters() {
   return (await apiFetch<CollectionResponse<Semester>>("/api/v1/semesters")).data;
 }
 
-export async function createSemester(payload: { name: string }) {
+export async function createSemester(payload: { name: string; session_id: number }) {
   return (await apiFetch<ItemResponse<Semester>>("/api/v1/semesters", {
     method: "POST",
     body: JSON.stringify(payload),
@@ -98,6 +101,19 @@ export async function createDepartment(payload: { name: string; code?: string })
   return (await apiFetch<ItemResponse<Department>>("/api/v1/departments", {
     method: "POST",
     body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function addDepartmentLevel(departmentId: number, payload: { name: string } | { level_id: number }) {
+  return (await apiFetch<ItemResponse<Department>>(`/api/v1/departments/${departmentId}/levels`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function removeDepartmentLevel(departmentId: number, levelId: number) {
+  return (await apiFetch<ItemResponse<Department>>(`/api/v1/departments/${departmentId}/levels/${levelId}`, {
+    method: "DELETE",
   })).data;
 }
 

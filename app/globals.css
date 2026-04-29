@@ -807,6 +807,38 @@ textarea {
   color: var(--school-orange);
 }
 
+.department-level-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.department-level-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #eef5fb;
+  border: 1px solid #d7e6f2;
+  color: #183b56;
+  border-radius: 4px;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.department-level-chip button {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #7a1f1f;
+  cursor: pointer;
+  line-height: 1;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 @media (max-width: 991px) {
   .nav-bar-header-one,
   .sidebar-main {

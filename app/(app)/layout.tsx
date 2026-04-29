@@ -6,12 +6,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 const navigation = [
-  { label: "Dashboard", href: "/dashboard", icon: "D" },
-  { label: "Licenses", href: "/dashboard#licenses", icon: "L" },
-  { label: "Question Bank", href: "/dashboard#questions", icon: "Q" },
-  { label: "Exams", href: "/dashboard#exams", icon: "E" },
-  { label: "Results", href: "/dashboard#results", icon: "R" },
-  { label: "Offline Sync", href: "/dashboard#sync", icon: "S" },
+  { label: "Dashboard", href: "/dashboard" },
+  { label: "Licenses", href: "/dashboard#licenses" },
+  { label: "Question Bank", href: "/dashboard#questions" },
+  { label: "Exams", href: "/dashboard#exams" },
+  { label: "Results", href: "/dashboard#results" },
+  { label: "Offline Sync", href: "/dashboard#sync" },
 ] as const;
 
 const managementLinks = [
@@ -29,7 +29,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     [pathname],
   );
   const [managementOpen, setManagementOpen] = useState(false);
-  const showManagement = managementOpen || managementActive;
+
+  useEffect(() => {
+    setManagementOpen(managementActive);
+  }, [managementActive]);
 
   useEffect(() => {
     if (loading) {
@@ -112,15 +115,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="dashboard-page-one">
         <aside className="sidebar-main sidebar-menu-one sidebar-expand-md sidebar-color">
           <div className="sidebar-menu-content">
-            <ul className="nav nav-sidebar-menu sidebar-toggle-view">
+            <ul className="nav nav-sidebar-menu sidebar-toggle-view cbt-sidebar-menu">
               <li className="sidebar-section-label">CBT Workspace</li>
-              {navigation.map((item) => {
+              {navigation.slice(0, 1).map((item) => {
                 const active =
                   pathname === item.href || (item.href === "/dashboard" && pathname === "/dashboard");
                 return (
                   <li key={item.label} className={`nav-item ${active ? "active" : ""}`}>
                     <Link href={item.href} className="nav-link">
-                      <span aria-hidden="true">{item.icon}</span>
                       <span>{item.label}</span>
                     </Link>
                   </li>
@@ -132,10 +134,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   className={`nav-link sidebar-nav-button ${managementActive ? "menu-active" : ""}`}
                   onClick={() => setManagementOpen((current) => !current)}
                 >
-                  <span aria-hidden="true">M</span>
                   <span>Management</span>
                 </button>
-                <ul className={`sub-group-menu ${showManagement ? "sub-group-active" : ""}`}>
+                <ul className={`sub-group-menu ${managementOpen ? "sub-group-active" : ""}`}>
                   {managementLinks.map((item) => {
                     const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
                     return (
@@ -148,6 +149,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   })}
                 </ul>
               </li>
+              {navigation.slice(1).map((item) => {
+                const active = pathname === item.href;
+                return (
+                  <li key={item.label} className={`nav-item ${active ? "active" : ""}`}>
+                    <Link href={item.href} className="nav-link">
+                      <span>{item.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </aside>
