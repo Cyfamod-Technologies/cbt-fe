@@ -56,6 +56,23 @@ export interface SchoolSettings {
   current_semester?: Semester | null;
 }
 
+export interface SchoolUser {
+  id: number;
+  school_id: number;
+  name: string;
+  matric_no: string | null;
+  student_id_no: string | null;
+  department_id: number | null;
+  level_id: number | null;
+  phone: string | null;
+  email: string | null;
+  role: string;
+  status: string;
+  last_login_at: string | null;
+  department?: Department | null;
+  level?: Level | null;
+}
+
 type CollectionResponse<T> = { data: T[] };
 type ItemResponse<T> = { data: T };
 
@@ -163,4 +180,58 @@ export async function updateCourse(
 
 export async function getSchoolSettings() {
   return (await apiFetch<ItemResponse<SchoolSettings>>("/api/v1/school-settings")).data;
+}
+
+export async function listUsers(role?: "staff" | "student") {
+  const query = role ? `?role=${encodeURIComponent(role)}` : "";
+  return (await apiFetch<CollectionResponse<SchoolUser>>(`/api/v1/users${query}`)).data;
+}
+
+export async function createUser(payload: {
+  name?: string;
+  full_name?: string;
+  matric_no?: string;
+  student_id_no?: string;
+  department_id?: number;
+  level_id?: number;
+  email?: string | null;
+  phone?: string | null;
+  password?: string;
+  role: "staff" | "student";
+  status?: string;
+}) {
+  return await apiFetch<ItemResponse<SchoolUser> & { temporary_password?: string }>("/api/v1/users", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateUser(
+  id: number,
+  payload: Partial<{
+    name: string;
+    full_name: string;
+    matric_no: string;
+    student_id_no: string;
+    department_id: number;
+    level_id: number;
+    email: string;
+    phone: string;
+    password: string;
+    role: "staff" | "student";
+    status: string;
+  }>,
+) {
+  return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/users/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function activateUser(id: number) {
+  return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/users/${id}/activate`, { method: "PATCH" })).data;
+}
+
+export async function deactivateUser(id: number) {
+  return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/users/${id}/deactivate`, { method: "PATCH" })).data;
 }

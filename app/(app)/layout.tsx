@@ -21,6 +21,17 @@ const managementLinks = [
   { label: "Courses", href: "/management/courses" },
 ] as const;
 
+const userLinks = [
+  { label: "Staff", href: "/users/staff" },
+] as const;
+
+const studentLinks = [
+  { label: "View Student", href: "/users/students" },
+  { label: "Bulk Upload", href: "/users/students/bulk-upload" },
+  { label: "Overrides", href: "/users/students/overrides" },
+  { label: "Final Courses", href: "/users/students/final-courses" },
+] as const;
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -30,11 +41,29 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     () => managementLinks.some((item) => isRouteActive(item.href)),
     [pathname],
   );
+  const usersActive = useMemo(
+    () => [...userLinks, ...studentLinks].some((item) => isRouteActive(item.href)),
+    [pathname],
+  );
+  const studentsActive = useMemo(
+    () => studentLinks.some((item) => isRouteActive(item.href)),
+    [pathname],
+  );
   const [managementOpen, setManagementOpen] = useState(false);
+  const [usersOpen, setUsersOpen] = useState(false);
+  const [studentsOpen, setStudentsOpen] = useState(false);
 
   useEffect(() => {
     setManagementOpen(managementActive);
   }, [managementActive]);
+
+  useEffect(() => {
+    setUsersOpen(usersActive);
+  }, [usersActive]);
+
+  useEffect(() => {
+    setStudentsOpen(studentsActive);
+  }, [studentsActive]);
 
   useEffect(() => {
     if (loading) {
@@ -150,6 +179,50 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       </li>
                     );
                   })}
+                </ul>
+              </li>
+              <li className={`nav-item sidebar-nav-item ${usersActive ? "active" : ""}`}>
+                <button
+                  type="button"
+                  className={`nav-link sidebar-nav-button ${usersActive ? "menu-active" : ""}`}
+                  onClick={() => setUsersOpen((current) => !current)}
+                >
+                  <span>Users</span>
+                </button>
+                <ul className={`sub-group-menu ${usersOpen ? "sub-group-active" : ""}`}>
+                  {userLinks.map((item) => {
+                    const active = isRouteActive(item.href);
+
+                    return (
+                      <li className="nav-item" key={item.href}>
+                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`}>
+                          <span>{item.label}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                  <li className={`nav-item sidebar-nav-item ${studentsActive ? "active" : ""}`}>
+                    <button
+                      type="button"
+                      className={`nav-link sidebar-nav-button ${studentsActive ? "menu-active" : ""}`}
+                      onClick={() => setStudentsOpen((current) => !current)}
+                    >
+                      <span>Students</span>
+                    </button>
+                    <ul className={`sub-group-menu ${studentsOpen ? "sub-group-active" : ""}`}>
+                      {studentLinks.map((item) => {
+                        const active = isRouteActive(item.href);
+
+                        return (
+                          <li className="nav-item" key={item.href}>
+                            <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`}>
+                              <span>{item.label}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </li>
                 </ul>
               </li>
               {navigation.slice(1).map((item) => {

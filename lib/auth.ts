@@ -11,6 +11,7 @@ export interface LoginPayload {
 export interface CbtCapabilities {
   manage_schools: boolean;
   manage_catalog: boolean;
+  manage_users: boolean;
   manage_questions: boolean;
   take_exams: boolean;
 }
