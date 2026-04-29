@@ -1,5 +1,5 @@
-import { UsersPage } from "@/app/(app)/users/_components/users-ui";
+import { StaffListPage } from "./_components/staff-ui";
 
 export default function Page() {
-  return <UsersPage role="staff" title="Staff" />;
+  return <StaffListPage />;
 }

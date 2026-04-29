@@ -60,11 +60,17 @@ export interface SchoolUser {
   id: number;
   school_id: number;
   name: string;
+  full_name?: string | null;
   matric_no: string | null;
   student_id_no: string | null;
   department_id: number | null;
   level_id: number | null;
   phone: string | null;
+  gender?: string | null;
+  employment_start_date?: string | null;
+  address?: string | null;
+  qualifications?: string | null;
+  photo_url?: string | null;
   email: string | null;
   role: string;
   status: string;
@@ -187,6 +193,10 @@ export async function listUsers(role?: "staff" | "student") {
   return (await apiFetch<CollectionResponse<SchoolUser>>(`/api/v1/users${query}`)).data;
 }
 
+export async function getUser(id: number) {
+  return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/users/${id}`)).data;
+}
+
 export async function createUser(payload: {
   name?: string;
   full_name?: string;
@@ -203,6 +213,34 @@ export async function createUser(payload: {
   return await apiFetch<ItemResponse<SchoolUser> & { temporary_password?: string }>("/api/v1/users", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function listStaff() {
+  return listUsers("staff");
+}
+
+export async function createStaff(formData: FormData) {
+  return await apiFetch<ItemResponse<SchoolUser> & { temporary_password?: string }>("/api/v1/users", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export async function updateStaff(id: number, formData: FormData) {
+  if (!formData.has("_method")) {
+    formData.append("_method", "PUT");
+  }
+
+  return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/users/${id}`, {
+    method: "POST",
+    body: formData,
+  })).data;
+}
+
+export async function deleteStaff(id: number) {
+  await apiFetch(`/api/v1/users/${id}`, {
+    method: "DELETE",
   });
 }
 
