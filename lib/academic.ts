@@ -213,8 +213,8 @@ export async function updateUser(
     full_name: string;
     matric_no: string;
     student_id_no: string;
-    department_id: number;
-    level_id: number;
+    department_id: number | null;
+    level_id: number | null;
     email: string;
     phone: string;
     password: string;
