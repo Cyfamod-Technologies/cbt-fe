@@ -7,11 +7,11 @@ import { useAuth } from "@/contexts/AuthContext";
 
 const navigation = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Licenses", href: "/dashboard#licenses" },
-  { label: "Question Bank", href: "/dashboard#questions" },
-  { label: "Exams", href: "/dashboard#exams" },
-  { label: "Results", href: "/dashboard#results" },
-  { label: "Offline Sync", href: "/dashboard#sync" },
+  // { label: "Licenses", href: "/dashboard#licenses" },
+  // { label: "Question Bank", href: "/dashboard#questions" },
+  // { label: "Assessments", href: "/dashboard#assessments" },
+  // { label: "Results", href: "/dashboard#results" },
+  // { label: "Offline Sync", href: "/dashboard#sync" },
 ] as const;
 
 const managementLinks = [
@@ -34,7 +34,14 @@ const studentLinks = [
 
 const assignLinks = [
   { label: "Lecturer to Course", href: "/assign/lecturer-courses" },
-  { label: "Exam-Officer to Dept/Level", href: "/assign/exam-officers" },
+  { label: "Assessment-Officer to Dept/Level", href: "/assign/exam-officers" },
+] as const;
+
+const cbtLinks = [
+  { label: "Quiz Management", href: "/cbt/admin" },
+  { label: "Live Monitor", href: "/cbt/admin/live" },
+  { label: "Results", href: "/cbt/results" },
+  { label: "History", href: "/cbt/history" },
 ] as const;
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -46,6 +53,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const usersActive = [...userLinks, ...studentLinks].some((item) => isRouteActive(item.href));
   const studentsActive = studentLinks.some((item) => isRouteActive(item.href));
   const assignActive = assignLinks.some((item) => isRouteActive(item.href));
+  const cbtActive = cbtLinks.some((item) => isRouteActive(item.href));
   const [managementOpen, setManagementOpen] = useState(false);
   const [managementCollapsed, setManagementCollapsed] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
@@ -54,10 +62,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [studentsCollapsed, setStudentsCollapsed] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignCollapsed, setAssignCollapsed] = useState(false);
+  const [cbtOpen, setCbtOpen] = useState(false);
+  const [cbtCollapsed, setCbtCollapsed] = useState(false);
   const showManagement = managementOpen || (managementActive && !managementCollapsed);
   const showUsers = usersOpen || (usersActive && !usersCollapsed);
   const showStudents = studentsOpen || (studentsActive && !studentsCollapsed);
   const showAssign = assignOpen || (assignActive && !assignCollapsed);
+  const showCbt = cbtOpen || (cbtActive && !cbtCollapsed);
 
   useEffect(() => {
     if (loading) {
@@ -78,6 +89,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setStudentsCollapsed(false);
     setAssignOpen(false);
     setAssignCollapsed(false);
+    setCbtOpen(false);
+    setCbtCollapsed(false);
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -94,6 +107,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setStudentsCollapsed(false);
     setAssignOpen(false);
     setAssignCollapsed(false);
+    setCbtOpen(false);
+    setCbtCollapsed(false);
   };
 
   const toggleManagement = () => {
@@ -106,6 +121,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setStudentsCollapsed(false);
     setAssignOpen(false);
     setAssignCollapsed(false);
+    setCbtOpen(false);
+    setCbtCollapsed(false);
   };
 
   const toggleUsers = () => {
@@ -116,6 +133,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setManagementCollapsed(false);
     setAssignOpen(false);
     setAssignCollapsed(false);
+    setCbtOpen(false);
+    setCbtCollapsed(false);
   };
 
   const toggleStudents = () => {
@@ -136,6 +155,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setUsersCollapsed(false);
     setStudentsOpen(false);
     setStudentsCollapsed(false);
+    setCbtOpen(false);
+    setCbtCollapsed(false);
+  };
+
+  const toggleCbt = () => {
+    const currentlyVisible = cbtOpen || (cbtActive && !cbtCollapsed);
+    setCbtOpen(!currentlyVisible);
+    setCbtCollapsed(currentlyVisible);
+    setManagementOpen(false);
+    setManagementCollapsed(false);
+    setUsersOpen(false);
+    setUsersCollapsed(false);
+    setStudentsOpen(false);
+    setStudentsCollapsed(false);
+    setAssignOpen(false);
+    setAssignCollapsed(false);
   };
 
   if (loading || !user) {
@@ -293,6 +328,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </button>
                 <ul className={`sub-group-menu ${showAssign ? "sub-group-active" : ""}`}>
                   {assignLinks.map((item) => {
+                    const active = isRouteActive(item.href);
+
+                    return (
+                      <li className="nav-item" key={item.href}>
+                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
+                          <span>{item.label}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+              <li className={`nav-item sidebar-nav-item ${cbtActive ? "active" : ""}`}>
+                <button
+                  type="button"
+                  className={`nav-link sidebar-nav-button ${cbtActive ? "menu-active" : ""}`}
+                  onClick={toggleCbt}
+                >
+                  <span>CBT</span>
+                </button>
+                <ul className={`sub-group-menu ${showCbt ? "sub-group-active" : ""}`}>
+                  {cbtLinks.map((item) => {
                     const active = isRouteActive(item.href);
 
                     return (

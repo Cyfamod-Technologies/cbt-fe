@@ -13,6 +13,7 @@ export interface CbtCapabilities {
   manage_catalog: boolean;
   manage_users: boolean;
   manage_questions: boolean;
+  manage_assessments: boolean;
   take_exams: boolean;
 }
 

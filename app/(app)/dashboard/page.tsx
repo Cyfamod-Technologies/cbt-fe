@@ -16,7 +16,7 @@ const workflowRows = [
   ["Foundation", "Auth, roles, current user, API client", "Done"],
   ["Catalog", "Sessions, semesters, departments, levels, courses", "In progress"],
   ["Question Workflow", "Create, export, import, review, approve", "Planned"],
-  ["Exam Workflow", "Schedule, register students, attempt lifecycle", "Planned"],
+  ["Assessment Workflow", "Schedule, register students, attempt lifecycle", "Planned"],
   ["Results", "Score, publish, review according to settings", "Planned"],
 ] as const;
 

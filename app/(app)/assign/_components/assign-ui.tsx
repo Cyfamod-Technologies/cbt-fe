@@ -358,7 +358,7 @@ export function ExamOfficerAssignmentsPage() {
       }));
       setFeedback(null);
     } catch (error) {
-      setFeedback(toDanger(error, "Unable to load exam officer assignments."));
+      setFeedback(toDanger(error, "Unable to load assessment officer assignments."));
     } finally {
       setLoading(false);
     }
@@ -419,7 +419,7 @@ export function ExamOfficerAssignmentsPage() {
           await createStaffExamOfficer(payload);
         }
       },
-      editingId ? "Exam officer assignment updated." : "Exam officer assignment created.",
+      editingId ? "Assessment officer assignment updated." : "Assessment officer assignment created.",
       load,
       setFeedback,
     );
@@ -442,7 +442,7 @@ export function ExamOfficerAssignmentsPage() {
   };
 
   const removeAssignment = async (assignment: StaffExamOfficer) => {
-    if (!window.confirm(`Remove exam officer assignment for ${assignment.staff?.full_name || "this staff"}?`)) {
+    if (!window.confirm(`Remove assessment officer assignment for ${assignment.staff?.full_name || "this staff"}?`)) {
       return;
     }
 
@@ -450,19 +450,19 @@ export function ExamOfficerAssignmentsPage() {
       async () => {
         await deleteStaffExamOfficer(assignment.id);
       },
-      "Exam officer assignment removed.",
+      "Assessment officer assignment removed.",
       load,
       setFeedback,
     );
   };
 
   return (
-    <AssignShell title="Exam-Officer to Dept/Level" current="Exam-Officer to Dept/Level">
+    <AssignShell title="Assessment-Officer to Dept/Level" current="Assessment-Officer to Dept/Level">
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
           <FormCard
-            title={editingId ? "Edit Exam-Officer to Dept/Level" : "Assign Exam-Officer to Dept/Level"}
+            title={editingId ? "Edit Assessment-Officer to Dept/Level" : "Assign Assessment-Officer to Dept/Level"}
             disabled={!canManageUsers}
             onSubmit={submit}
           >
@@ -535,7 +535,7 @@ export function ExamOfficerAssignmentsPage() {
             includeScope
           />
           <TableCard
-            title="Assigned Exam-Officers to Dept/Level"
+            title="Assigned Assessment-Officers to Dept/Level"
             loading={loading}
             headers={["Staff", "Session", "Semester", "Department", "Scope", "Level", "Actions"]}
             rows={filteredAssignments.map((assignment) => [
