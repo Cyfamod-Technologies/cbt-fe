@@ -362,6 +362,23 @@ export async function createStaffCourseAssignment(payload: {
   })).data;
 }
 
+export async function updateStaffCourseAssignment(
+  id: number,
+  payload: {
+    staff_id: number;
+    session_id: number;
+    semester_id: number;
+    department_id: number;
+    level_id: number;
+    course_id: number;
+  },
+) {
+  return (await apiFetch<ItemResponse<StaffCourseAssignment>>(`/api/v1/staff-course-assignments/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
 export async function deleteStaffCourseAssignment(id: number) {
   await apiFetch(`/api/v1/staff-course-assignments/${id}`, { method: "DELETE" });
 }
@@ -380,6 +397,23 @@ export async function createStaffExamOfficer(payload: {
 }) {
   return (await apiFetch<ItemResponse<StaffExamOfficer>>("/api/v1/staff-exam-officers", {
     method: "POST",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function updateStaffExamOfficer(
+  id: number,
+  payload: {
+    staff_id: number;
+    session_id: number;
+    semester_id: number;
+    department_id: number;
+    level_id?: number | null;
+    scope: "department" | "department_level";
+  },
+) {
+  return (await apiFetch<ItemResponse<StaffExamOfficer>>(`/api/v1/staff-exam-officers/${id}`, {
+    method: "PUT",
     body: JSON.stringify(payload),
   })).data;
 }

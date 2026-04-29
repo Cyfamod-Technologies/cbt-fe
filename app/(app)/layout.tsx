@@ -47,13 +47,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const studentsActive = studentLinks.some((item) => isRouteActive(item.href));
   const assignActive = assignLinks.some((item) => isRouteActive(item.href));
   const [managementOpen, setManagementOpen] = useState(false);
+  const [managementCollapsed, setManagementCollapsed] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
+  const [usersCollapsed, setUsersCollapsed] = useState(false);
   const [studentsOpen, setStudentsOpen] = useState(false);
+  const [studentsCollapsed, setStudentsCollapsed] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
-  const showManagement = managementOpen || managementActive;
-  const showUsers = usersOpen || usersActive;
-  const showStudents = studentsOpen || studentsActive;
-  const showAssign = assignOpen || assignActive;
+  const [assignCollapsed, setAssignCollapsed] = useState(false);
+  const showManagement = managementOpen || (managementActive && !managementCollapsed);
+  const showUsers = usersOpen || (usersActive && !usersCollapsed);
+  const showStudents = studentsOpen || (studentsActive && !studentsCollapsed);
+  const showAssign = assignOpen || (assignActive && !assignCollapsed);
 
   useEffect(() => {
     if (loading) {
@@ -65,6 +69,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [loading, pathname, router, user]);
 
+  useEffect(() => {
+    setManagementOpen(false);
+    setManagementCollapsed(false);
+    setUsersOpen(false);
+    setUsersCollapsed(false);
+    setStudentsOpen(false);
+    setStudentsCollapsed(false);
+    setAssignOpen(false);
+    setAssignCollapsed(false);
+  }, [pathname]);
+
   const handleLogout = async () => {
     await logout();
     router.replace("/login");
@@ -72,34 +87,55 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const closeSidebarGroups = () => {
     setManagementOpen(false);
+    setManagementCollapsed(false);
     setUsersOpen(false);
+    setUsersCollapsed(false);
     setStudentsOpen(false);
+    setStudentsCollapsed(false);
     setAssignOpen(false);
+    setAssignCollapsed(false);
   };
 
   const toggleManagement = () => {
-    setManagementOpen((current) => !current);
+    const currentlyVisible = managementOpen || (managementActive && !managementCollapsed);
+    setManagementOpen(!currentlyVisible);
+    setManagementCollapsed(currentlyVisible);
     setUsersOpen(false);
+    setUsersCollapsed(false);
     setStudentsOpen(false);
+    setStudentsCollapsed(false);
     setAssignOpen(false);
+    setAssignCollapsed(false);
   };
 
   const toggleUsers = () => {
-    setUsersOpen((current) => !current);
+    const currentlyVisible = usersOpen || (usersActive && !usersCollapsed);
+    setUsersOpen(!currentlyVisible);
+    setUsersCollapsed(currentlyVisible);
     setManagementOpen(false);
+    setManagementCollapsed(false);
     setAssignOpen(false);
+    setAssignCollapsed(false);
   };
 
   const toggleStudents = () => {
-    setStudentsOpen((current) => !current);
+    const currentlyVisible = studentsOpen || (studentsActive && !studentsCollapsed);
+    setStudentsOpen(!currentlyVisible);
+    setStudentsCollapsed(currentlyVisible);
     setAssignOpen(false);
+    setAssignCollapsed(false);
   };
 
   const toggleAssign = () => {
-    setAssignOpen((current) => !current);
+    const currentlyVisible = assignOpen || (assignActive && !assignCollapsed);
+    setAssignOpen(!currentlyVisible);
+    setAssignCollapsed(currentlyVisible);
     setManagementOpen(false);
+    setManagementCollapsed(false);
     setUsersOpen(false);
+    setUsersCollapsed(false);
     setStudentsOpen(false);
+    setStudentsCollapsed(false);
   };
 
   if (loading || !user) {

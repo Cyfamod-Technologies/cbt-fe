@@ -15,6 +15,8 @@ import {
   listStaff,
   listStaffCourseAssignments,
   listStaffExamOfficers,
+  updateStaffCourseAssignment,
+  updateStaffExamOfficer,
   type AcademicSession,
   type Course,
   type Department,
@@ -27,6 +29,22 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 
 type Feedback = { type: "success" | "danger"; message: string } | null;
+
+type AssignmentFilters = {
+  search: string;
+  staffId: string;
+  sessionId: string;
+  departmentId: string;
+};
+
+type FilterState = AssignmentFilters & { scope?: string };
+
+const emptyFilters: AssignmentFilters = {
+  search: "",
+  staffId: "",
+  sessionId: "",
+  departmentId: "",
+};
 
 type AssignmentOptions = {
   staff: Staff[];
@@ -61,6 +79,8 @@ export function LecturerCourseAssignmentsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [filters, setFilters] = useState<FilterState>(emptyFilters);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -101,23 +121,76 @@ export function LecturerCourseAssignmentsPage() {
     [form.departmentId, options.courses],
   );
 
+  const filteredAssignments = useMemo(() => {
+    const query = filters.search.trim().toLowerCase();
+
+    return assignments.filter((assignment) => {
+      const matchesSearch = query
+        ? [
+            assignment.staff?.full_name,
+            assignment.staff?.staff_id,
+            assignment.course?.code,
+            assignment.course?.title,
+            assignment.session?.name,
+            assignment.semester?.name,
+            assignment.department?.name,
+            assignment.level?.name,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(query)
+        : true;
+
+      return (
+        matchesSearch &&
+        (!filters.staffId || assignment.staff_id === Number(filters.staffId)) &&
+        (!filters.sessionId || assignment.session_id === Number(filters.sessionId)) &&
+        (!filters.departmentId || assignment.department_id === Number(filters.departmentId))
+      );
+    });
+  }, [assignments, filters]);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     await runAction(
       async () => {
-        await createStaffCourseAssignment({
+        const payload = {
           staff_id: Number(form.staffId),
           session_id: Number(form.sessionId),
           semester_id: Number(form.semesterId),
           department_id: Number(form.departmentId),
           level_id: Number(form.levelId),
           course_id: Number(form.courseId),
-        });
+        };
+
+        if (editingId) {
+          await updateStaffCourseAssignment(editingId, payload);
+          setEditingId(null);
+        } else {
+          await createStaffCourseAssignment(payload);
+        }
       },
-      "Lecturer course assignment created.",
+      editingId ? "Lecturer course assignment updated." : "Lecturer course assignment created.",
       load,
       setFeedback,
     );
+  };
+
+  const startEdit = (assignment: StaffCourseAssignment) => {
+    setEditingId(assignment.id);
+    setForm({
+      staffId: String(assignment.staff_id),
+      sessionId: String(assignment.session_id),
+      semesterId: String(assignment.semester_id),
+      departmentId: String(assignment.department_id),
+      levelId: String(assignment.level_id),
+      courseId: String(assignment.course_id),
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
   };
 
   const removeAssignment = async (assignment: StaffCourseAssignment) => {
@@ -140,7 +213,7 @@ export function LecturerCourseAssignmentsPage() {
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
-          <FormCard title="Assign Lecturer to Course" disabled={!canManageUsers} onSubmit={submit}>
+          <FormCard title={editingId ? "Edit Lecturer to Course" : "Assign Lecturer to Course"} disabled={!canManageUsers} onSubmit={submit}>
             <SelectField label="Staff" value={form.staffId} onChange={(value) => setFormField(setForm, "staffId", value)}>
               <option value="">Select Staff</option>
               {options.staff.map((staff) => (
@@ -190,31 +263,51 @@ export function LecturerCourseAssignmentsPage() {
               ))}
             </SelectField>
             <button type="submit" className="btn btn-primary mt-3">
-              Assign Course
+              {editingId ? "Update Assignment" : "Assign Course"}
             </button>
+            {editingId ? (
+              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelEdit}>
+                Cancel Edit
+              </button>
+            ) : null}
           </FormCard>
         </div>
         <div className="col-lg-8 col-12">
+          <FilterCard
+            filters={filters}
+            setFilters={setFilters}
+            options={options}
+            searchPlaceholder="Search staff, course, session, semester, department or level"
+          />
           <TableCard
             title="Assigned Lecturers to Courses"
             loading={loading}
-            headers={["Staff", "Course", "Session", "Semester", "Department", "Level", "Action"]}
-            rows={assignments.map((assignment) => [
+            headers={["Staff", "Course", "Session", "Semester", "Department", "Level", "Actions"]}
+            rows={filteredAssignments.map((assignment) => [
               assignment.staff?.full_name || "",
               `${assignment.course?.code || ""} ${assignment.course?.title || ""}`.trim(),
               assignment.session?.name || "",
               assignment.semester?.name || "",
               assignment.department?.name || "",
               assignment.level?.name || "",
-              <button
-                key={`remove-${assignment.id}`}
-                type="button"
-                className="btn btn-sm btn-outline-danger"
-                disabled={!canManageUsers}
-                onClick={() => void removeAssignment(assignment)}
-              >
-                Remove
-              </button>,
+              <div key={`actions-${assignment.id}`} className="d-flex">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary mr-1"
+                  disabled={!canManageUsers}
+                  onClick={() => startEdit(assignment)}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-danger"
+                  disabled={!canManageUsers}
+                  onClick={() => void removeAssignment(assignment)}
+                >
+                  Remove
+                </button>
+              </div>,
             ])}
           />
         </div>
@@ -238,6 +331,8 @@ export function ExamOfficerAssignmentsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [filters, setFilters] = useState<FilterState>({ ...emptyFilters, scope: "" });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -273,23 +368,77 @@ export function ExamOfficerAssignmentsPage() {
     void load();
   }, [load]);
 
+  const filteredAssignments = useMemo(() => {
+    const query = filters.search.trim().toLowerCase();
+
+    return assignments.filter((assignment) => {
+      const scopeLabel = assignment.scope === "department" ? "Department-wide" : "Department + Level";
+      const matchesSearch = query
+        ? [
+            assignment.staff?.full_name,
+            assignment.staff?.staff_id,
+            assignment.session?.name,
+            assignment.semester?.name,
+            assignment.department?.name,
+            assignment.level?.name,
+            scopeLabel,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(query)
+        : true;
+
+      return (
+        matchesSearch &&
+        (!filters.staffId || assignment.staff_id === Number(filters.staffId)) &&
+        (!filters.sessionId || assignment.session_id === Number(filters.sessionId)) &&
+        (!filters.departmentId || assignment.department_id === Number(filters.departmentId)) &&
+        (!filters.scope || assignment.scope === filters.scope)
+      );
+    });
+  }, [assignments, filters]);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     await runAction(
       async () => {
-        await createStaffExamOfficer({
+        const payload = {
           staff_id: Number(form.staffId),
           session_id: Number(form.sessionId),
           semester_id: Number(form.semesterId),
           department_id: Number(form.departmentId),
           scope: form.scope as "department" | "department_level",
           level_id: form.scope === "department_level" ? Number(form.levelId) : null,
-        });
+        };
+
+        if (editingId) {
+          await updateStaffExamOfficer(editingId, payload);
+          setEditingId(null);
+        } else {
+          await createStaffExamOfficer(payload);
+        }
       },
-      "Exam officer assignment created.",
+      editingId ? "Exam officer assignment updated." : "Exam officer assignment created.",
       load,
       setFeedback,
     );
+  };
+
+  const startEdit = (assignment: StaffExamOfficer) => {
+    setEditingId(assignment.id);
+    setForm({
+      staffId: String(assignment.staff_id),
+      sessionId: String(assignment.session_id),
+      semesterId: String(assignment.semester_id),
+      departmentId: String(assignment.department_id),
+      levelId: assignment.level_id ? String(assignment.level_id) : "",
+      scope: assignment.scope,
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
   };
 
   const removeAssignment = async (assignment: StaffExamOfficer) => {
@@ -312,7 +461,11 @@ export function ExamOfficerAssignmentsPage() {
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
-          <FormCard title="Assign Exam-Officer to Dept/Level" disabled={!canManageUsers} onSubmit={submit}>
+          <FormCard
+            title={editingId ? "Edit Exam-Officer to Dept/Level" : "Assign Exam-Officer to Dept/Level"}
+            disabled={!canManageUsers}
+            onSubmit={submit}
+          >
             <SelectField label="Staff" value={form.staffId} onChange={(value) => setFormField(setForm, "staffId", value)}>
               <option value="">Select Staff</option>
               {options.staff.map((staff) => (
@@ -364,31 +517,52 @@ export function ExamOfficerAssignmentsPage() {
               </SelectField>
             ) : null}
             <button type="submit" className="btn btn-primary mt-3">
-              Assign Officer
+              {editingId ? "Update Assignment" : "Assign Officer"}
             </button>
+            {editingId ? (
+              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelEdit}>
+                Cancel Edit
+              </button>
+            ) : null}
           </FormCard>
         </div>
         <div className="col-lg-8 col-12">
+          <FilterCard
+            filters={filters}
+            setFilters={setFilters}
+            options={options}
+            searchPlaceholder="Search staff, session, semester, department, scope or level"
+            includeScope
+          />
           <TableCard
             title="Assigned Exam-Officers to Dept/Level"
             loading={loading}
-            headers={["Staff", "Session", "Semester", "Department", "Scope", "Level", "Action"]}
-            rows={assignments.map((assignment) => [
+            headers={["Staff", "Session", "Semester", "Department", "Scope", "Level", "Actions"]}
+            rows={filteredAssignments.map((assignment) => [
               assignment.staff?.full_name || "",
               assignment.session?.name || "",
               assignment.semester?.name || "",
               assignment.department?.name || "",
               assignment.scope === "department" ? "Department-wide" : "Department + Level",
               assignment.level?.name || "All Levels",
-              <button
-                key={`remove-${assignment.id}`}
-                type="button"
-                className="btn btn-sm btn-outline-danger"
-                disabled={!canManageUsers}
-                onClick={() => void removeAssignment(assignment)}
-              >
-                Remove
-              </button>,
+              <div key={`actions-${assignment.id}`} className="d-flex">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary mr-1"
+                  disabled={!canManageUsers}
+                  onClick={() => startEdit(assignment)}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-danger"
+                  disabled={!canManageUsers}
+                  onClick={() => void removeAssignment(assignment)}
+                >
+                  Remove
+                </button>
+              </div>,
             ])}
           />
         </div>
@@ -433,6 +607,109 @@ function SelectField({
         {children}
       </select>
     </>
+  );
+}
+
+function FilterCard({
+  filters,
+  setFilters,
+  options,
+  searchPlaceholder,
+  includeScope = false,
+}: {
+  filters: FilterState;
+  setFilters: React.Dispatch<React.SetStateAction<FilterState>>;
+  options: AssignmentOptions;
+  searchPlaceholder: string;
+  includeScope?: boolean;
+}) {
+  const updateFilter = (key: keyof FilterState, value: string) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+  };
+
+  const resetFilters = () => {
+    setFilters((current) => ({
+      search: "",
+      staffId: "",
+      sessionId: "",
+      departmentId: "",
+      ...(Object.prototype.hasOwnProperty.call(current, "scope") ? { scope: "" } : {}),
+    }));
+  };
+
+  return (
+    <div className="card height-auto">
+      <div className="card-body">
+        <div className="heading-layout1">
+          <div className="item-title">
+            <h3>Search / Filter</h3>
+          </div>
+        </div>
+        <form className="row gutters-8 align-items-end" onSubmit={(event) => event.preventDefault()}>
+          <div className="col-lg-4 col-md-6 col-12 form-group">
+            <label>Search</label>
+            <input
+              className="form-control"
+              placeholder={searchPlaceholder}
+              value={filters.search}
+              onChange={(event) => updateFilter("search", event.target.value)}
+            />
+          </div>
+          <div className="col-lg-2 col-md-6 col-12 form-group">
+            <label>Staff</label>
+            <select className="form-control" value={filters.staffId} onChange={(event) => updateFilter("staffId", event.target.value)}>
+              <option value="">All Staff</option>
+              {options.staff.map((staff) => (
+                <option key={staff.id} value={staff.id}>
+                  {staff.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="col-lg-2 col-md-6 col-12 form-group">
+            <label>Session</label>
+            <select className="form-control" value={filters.sessionId} onChange={(event) => updateFilter("sessionId", event.target.value)}>
+              <option value="">All Sessions</option>
+              {options.sessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {session.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="col-lg-2 col-md-6 col-12 form-group">
+            <label>Department</label>
+            <select
+              className="form-control"
+              value={filters.departmentId}
+              onChange={(event) => updateFilter("departmentId", event.target.value)}
+            >
+              <option value="">All Departments</option>
+              {options.departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {includeScope ? (
+            <div className="col-lg-2 col-md-6 col-12 form-group">
+              <label>Scope</label>
+              <select className="form-control" value={filters.scope || ""} onChange={(event) => updateFilter("scope", event.target.value)}>
+                <option value="">All Scopes</option>
+                <option value="department">Department-wide</option>
+                <option value="department_level">Department + Level</option>
+              </select>
+            </div>
+          ) : null}
+          <div className="col-lg-2 col-md-6 col-12 form-group">
+            <button type="button" className="btn btn-outline-secondary" onClick={resetFilters}>
+              Reset
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
