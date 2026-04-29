@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -32,38 +32,28 @@ const studentLinks = [
   { label: "Student Courses", href: "/users/students/student-courses" },
 ] as const;
 
+const assignLinks = [
+  { label: "Lecturer to Course", href: "/assign/lecturer-courses" },
+  { label: "Exam-Officer to Dept/Level", href: "/assign/exam-officers" },
+] as const;
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname() || "/dashboard";
   const isRouteActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-  const managementActive = useMemo(
-    () => managementLinks.some((item) => isRouteActive(item.href)),
-    [pathname],
-  );
-  const usersActive = useMemo(
-    () => [...userLinks, ...studentLinks].some((item) => isRouteActive(item.href)),
-    [pathname],
-  );
-  const studentsActive = useMemo(
-    () => studentLinks.some((item) => isRouteActive(item.href)),
-    [pathname],
-  );
+  const managementActive = managementLinks.some((item) => isRouteActive(item.href));
+  const usersActive = [...userLinks, ...studentLinks].some((item) => isRouteActive(item.href));
+  const studentsActive = studentLinks.some((item) => isRouteActive(item.href));
+  const assignActive = assignLinks.some((item) => isRouteActive(item.href));
   const [managementOpen, setManagementOpen] = useState(false);
   const [usersOpen, setUsersOpen] = useState(false);
   const [studentsOpen, setStudentsOpen] = useState(false);
-
-  useEffect(() => {
-    setManagementOpen(managementActive);
-  }, [managementActive]);
-
-  useEffect(() => {
-    setUsersOpen(usersActive);
-  }, [usersActive]);
-
-  useEffect(() => {
-    setStudentsOpen(studentsActive);
-  }, [studentsActive]);
+  const [assignOpen, setAssignOpen] = useState(false);
+  const showManagement = managementOpen || managementActive;
+  const showUsers = usersOpen || usersActive;
+  const showStudents = studentsOpen || studentsActive;
+  const showAssign = assignOpen || assignActive;
 
   useEffect(() => {
     if (loading) {
@@ -78,6 +68,38 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const handleLogout = async () => {
     await logout();
     router.replace("/login");
+  };
+
+  const closeSidebarGroups = () => {
+    setManagementOpen(false);
+    setUsersOpen(false);
+    setStudentsOpen(false);
+    setAssignOpen(false);
+  };
+
+  const toggleManagement = () => {
+    setManagementOpen((current) => !current);
+    setUsersOpen(false);
+    setStudentsOpen(false);
+    setAssignOpen(false);
+  };
+
+  const toggleUsers = () => {
+    setUsersOpen((current) => !current);
+    setManagementOpen(false);
+    setAssignOpen(false);
+  };
+
+  const toggleStudents = () => {
+    setStudentsOpen((current) => !current);
+    setAssignOpen(false);
+  };
+
+  const toggleAssign = () => {
+    setAssignOpen((current) => !current);
+    setManagementOpen(false);
+    setUsersOpen(false);
+    setStudentsOpen(false);
   };
 
   if (loading || !user) {
@@ -153,7 +175,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   pathname === item.href || (item.href === "/dashboard" && pathname === "/dashboard");
                 return (
                   <li key={item.label} className={`nav-item ${active ? "active" : ""}`}>
-                    <Link href={item.href} className="nav-link">
+                    <Link href={item.href} className="nav-link" onClick={closeSidebarGroups}>
                       <span>{item.label}</span>
                     </Link>
                   </li>
@@ -163,17 +185,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   className={`nav-link sidebar-nav-button ${managementActive ? "menu-active" : ""}`}
-                  onClick={() => setManagementOpen((current) => !current)}
+                  onClick={toggleManagement}
                 >
                   <span>Management</span>
                 </button>
-                <ul className={`sub-group-menu ${managementOpen ? "sub-group-active" : ""}`}>
+                <ul className={`sub-group-menu ${showManagement ? "sub-group-active" : ""}`}>
                   {managementLinks.map((item) => {
                     const active = isRouteActive(item.href);
 
                     return (
                       <li className="nav-item" key={item.href}>
-                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`}>
+                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
                           <span>{item.label}</span>
                         </Link>
                       </li>
@@ -185,17 +207,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   className={`nav-link sidebar-nav-button ${usersActive ? "menu-active" : ""}`}
-                  onClick={() => setUsersOpen((current) => !current)}
+                  onClick={toggleUsers}
                 >
                   <span>Users</span>
                 </button>
-                <ul className={`sub-group-menu ${usersOpen ? "sub-group-active" : ""}`}>
+                <ul className={`sub-group-menu ${showUsers ? "sub-group-active" : ""}`}>
                   {userLinks.map((item) => {
                     const active = isRouteActive(item.href);
 
                     return (
                       <li className="nav-item" key={item.href}>
-                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`}>
+                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
                           <span>{item.label}</span>
                         </Link>
                       </li>
@@ -205,17 +227,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <button
                       type="button"
                       className={`nav-link sidebar-nav-button ${studentsActive ? "menu-active" : ""}`}
-                      onClick={() => setStudentsOpen((current) => !current)}
+                      onClick={toggleStudents}
                     >
                       <span>Students</span>
                     </button>
-                    <ul className={`sub-group-menu ${studentsOpen ? "sub-group-active" : ""}`}>
+                    <ul className={`sub-group-menu ${showStudents ? "sub-group-active" : ""}`}>
                       {studentLinks.map((item) => {
                         const active = item.href === "/users/students" ? pathname === item.href : isRouteActive(item.href);
 
                         return (
                           <li className="nav-item" key={item.href}>
-                            <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`}>
+                            <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
                               <span>{item.label}</span>
                             </Link>
                           </li>
@@ -225,11 +247,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </li>
                 </ul>
               </li>
+              <li className={`nav-item sidebar-nav-item ${assignActive ? "active" : ""}`}>
+                <button
+                  type="button"
+                  className={`nav-link sidebar-nav-button ${assignActive ? "menu-active" : ""}`}
+                  onClick={toggleAssign}
+                >
+                  <span>Assign</span>
+                </button>
+                <ul className={`sub-group-menu ${showAssign ? "sub-group-active" : ""}`}>
+                  {assignLinks.map((item) => {
+                    const active = isRouteActive(item.href);
+
+                    return (
+                      <li className="nav-item" key={item.href}>
+                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
+                          <span>{item.label}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
               {navigation.slice(1).map((item) => {
                 const active = pathname === item.href;
                 return (
                   <li key={item.label} className={`nav-item ${active ? "active" : ""}`}>
-                    <Link href={item.href} className="nav-link">
+                    <Link href={item.href} className="nav-link" onClick={closeSidebarGroups}>
                       <span>{item.label}</span>
                     </Link>
                   </li>

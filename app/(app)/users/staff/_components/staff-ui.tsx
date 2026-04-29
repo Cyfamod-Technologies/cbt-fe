@@ -4,50 +4,41 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  activateStaff,
   createStaff,
-  deleteStaff,
-  getUser,
+  deactivateStaff,
+  getStaff,
+  listDepartments,
   listStaff,
   updateStaff,
-  type SchoolUser,
+  type Department,
+  type Staff,
 } from "@/lib/academic";
 import { useAuth } from "@/contexts/AuthContext";
 
-const genderOptions = [
-  { value: "male", label: "Male" },
-  { value: "female", label: "Female" },
-  { value: "others", label: "Others" },
-];
-
 type StaffFormState = {
+  staff_id: string;
   full_name: string;
   email: string;
   phone: string;
-  role: string;
-  gender: string;
-  employment_start_date: string;
-  address: string;
-  qualifications: string;
+  department_id: string;
   password: string;
   password_confirmation: string;
 };
 
 const emptyForm: StaffFormState = {
+  staff_id: "",
   full_name: "",
   email: "",
   phone: "",
-  role: "Staff",
-  gender: "",
-  employment_start_date: "",
-  address: "",
-  qualifications: "",
+  department_id: "",
   password: "",
   password_confirmation: "",
 };
 
 export function StaffListPage() {
   const { user } = useAuth();
-  const [staff, setStaff] = useState<SchoolUser[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -77,7 +68,7 @@ export function StaffListPage() {
     }
 
     return staff.filter((item) => {
-      const haystack = [item.full_name ?? item.name, item.email, item.phone, item.gender, item.qualifications]
+      const haystack = [item.staff_id, item.full_name, item.email, item.phone, item.department?.name, item.status]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
@@ -86,16 +77,21 @@ export function StaffListPage() {
     });
   }, [search, staff]);
 
-  const handleDelete = async (item: SchoolUser) => {
-    if (!window.confirm(`Delete staff profile for "${item.full_name ?? item.name}"?`)) {
+  const toggleStatus = async (item: Staff) => {
+    const nextAction = item.status === "active" ? "deactivate" : "activate";
+    if (!window.confirm(`${nextAction === "activate" ? "Activate" : "Deactivate"} staff profile for "${item.full_name}"?`)) {
       return;
     }
 
     try {
-      await deleteStaff(item.id);
+      if (nextAction === "activate") {
+        await activateStaff(item.id);
+      } else {
+        await deactivateStaff(item.id);
+      }
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to delete staff profile.");
+      setError(err instanceof Error ? err.message : "Unable to update staff status.");
     }
   };
 
@@ -150,7 +146,7 @@ export function StaffListPage() {
               <input
                 id="staff-search"
                 type="text"
-                placeholder="Name, email, phone or qualification"
+                placeholder="Staff ID, name, email, phone or department"
                 className="form-control"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
@@ -162,43 +158,45 @@ export function StaffListPage() {
             <table className="table display text-nowrap">
               <thead>
                 <tr>
+                  <th>Staff ID</th>
                   <th>Name</th>
                   <th>Email</th>
                   <th>Phone</th>
-                  <th>Role</th>
-                  <th>Gender</th>
+                  <th>Department</th>
+                  <th>Status</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="text-center">
-                      Loading staff…
+                    <td colSpan={7} className="text-center">
+                      Loading staff...
                     </td>
                   </tr>
                 ) : filteredStaff.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center">
+                    <td colSpan={7} className="text-center">
                       No staff found.
                     </td>
                   </tr>
                 ) : (
                   filteredStaff.map((item) => (
                     <tr key={item.id}>
-                      <td>{item.full_name ?? item.name}</td>
+                      <td>{item.staff_id}</td>
+                      <td>{item.full_name}</td>
                       <td>{item.email ?? "N/A"}</td>
                       <td>{item.phone ?? "N/A"}</td>
-                      <td>Staff</td>
-                      <td className="text-capitalize">{item.gender ?? "N/A"}</td>
+                      <td>{item.department?.name ?? "N/A"}</td>
+                      <td className="text-capitalize">{item.status}</td>
                       <td>
                         <div className="d-flex gap-2">
                           <Link href={`/users/staff/edit?id=${item.id}`} className="btn btn-sm btn-outline-primary mr-1">
                             Edit
                           </Link>
                           {canManageUsers ? (
-                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => void handleDelete(item)}>
-                              Delete
+                            <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => void toggleStatus(item)}>
+                              {item.status === "active" ? "Deactivate" : "Activate"}
                             </button>
                           ) : null}
                         </div>
@@ -220,11 +218,31 @@ export function StaffFormPage({ mode }: { mode: "create" | "edit" }) {
   const searchParams = useSearchParams();
   const staffId = searchParams.get("id");
   const [form, setForm] = useState<StaffFormState>(emptyForm);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(mode === "edit");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    void listDepartments()
+      .then((items) => {
+        if (active) {
+          setDepartments(items);
+        }
+      })
+      .catch((err) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : "Unable to load departments.");
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (mode !== "edit") {
@@ -238,21 +256,18 @@ export function StaffFormPage({ mode }: { mode: "create" | "edit" }) {
 
     let active = true;
 
-    void getUser(Number(staffId))
+    void getStaff(Number(staffId))
       .then((staff) => {
         if (!active) {
           return;
         }
 
         setForm({
-          full_name: staff.full_name ?? staff.name ?? "",
+          staff_id: staff.staff_id,
+          full_name: staff.full_name,
           email: staff.email ?? "",
           phone: staff.phone ?? "",
-          role: "Staff",
-          gender: staff.gender ?? "",
-          employment_start_date: staff.employment_start_date ?? "",
-          address: staff.address ?? "",
-          qualifications: staff.qualifications ?? "",
+          department_id: staff.department_id ? String(staff.department_id) : "",
           password: "",
           password_confirmation: "",
         });
@@ -299,12 +314,12 @@ export function StaffFormPage({ mode }: { mode: "create" | "edit" }) {
       setError("Enter the staff phone number.");
       return;
     }
-    if (!form.gender.trim()) {
-      setError("Select the staff gender.");
+    if (!form.staff_id.trim()) {
+      setError("Enter the staff ID.");
       return;
     }
 
-    if (mode === "edit" && (form.password || form.password_confirmation)) {
+    if (form.password || form.password_confirmation) {
       if (form.password.length < 8) {
         setError("Password must be at least 8 characters.");
         return;
@@ -315,24 +330,14 @@ export function StaffFormPage({ mode }: { mode: "create" | "edit" }) {
       }
     }
 
-    const payload = new FormData();
-    payload.append("full_name", form.full_name.trim());
-    payload.append("email", form.email.trim());
-    payload.append("phone", form.phone.trim());
-    payload.append("role", "staff");
-    payload.append("gender", form.gender.trim());
-    payload.append("employment_start_date", form.employment_start_date);
-    payload.append("address", form.address.trim());
-    payload.append("qualifications", form.qualifications.trim());
-
-    if (mode === "edit" && form.password) {
-      payload.append("password", form.password);
-      payload.append("password_confirmation", form.password_confirmation);
-    }
-
-    if (photoFile) {
-      payload.append("photo", photoFile);
-    }
+    const payload = {
+      staff_id: form.staff_id.trim(),
+      full_name: form.full_name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      department_id: form.department_id ? Number(form.department_id) : null,
+      ...(form.password ? { password: form.password } : {}),
+    };
 
     try {
       setSubmitting(true);
@@ -418,6 +423,18 @@ export function StaffFormPage({ mode }: { mode: "create" | "edit" }) {
           <form onSubmit={handleSubmit}>
             <div className="row gutters-8">
               <div className="col-lg-6 col-12 form-group">
+                <label htmlFor="staff-number">Staff ID *</label>
+                <input
+                  id="staff-number"
+                  type="text"
+                  className="form-control"
+                  placeholder="e.g. STF-001"
+                  value={form.staff_id}
+                  onChange={(event) => updateField("staff_id", event.target.value)}
+                  required
+                />
+              </div>
+              <div className="col-lg-6 col-12 form-group">
                 <label htmlFor="staff-name">Full Name *</label>
                 <input
                   id="staff-name"
@@ -454,96 +471,43 @@ export function StaffFormPage({ mode }: { mode: "create" | "edit" }) {
                 />
               </div>
               <div className="col-lg-6 col-12 form-group">
-                <label htmlFor="staff-role">Role *</label>
-                <select id="staff-role" className="form-control" value={form.role} disabled>
-                  <option value="staff">Staff</option>
-                </select>
-              </div>
-              <div className="col-lg-6 col-12 form-group">
-                <label htmlFor="staff-gender">Gender *</label>
+                <label htmlFor="staff-department">Department</label>
                 <select
-                  id="staff-gender"
+                  id="staff-department"
                   className="form-control"
-                  value={form.gender}
-                  onChange={(event) => updateField("gender", event.target.value)}
-                  required
+                  value={form.department_id}
+                  onChange={(event) => updateField("department_id", event.target.value)}
                 >
-                  <option value="">Select gender</option>
-                  {genderOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
+                  <option value="">Select department</option>
+                  {departments.map((department) => (
+                    <option key={department.id} value={department.id}>
+                      {department.name}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="col-lg-6 col-12 form-group">
-                <label htmlFor="staff-start-date">Employment Start Date</label>
+                <label htmlFor="staff-password">{mode === "create" ? "Password" : "New Password"}</label>
                 <input
-                  id="staff-start-date"
-                  type="date"
+                  id="staff-password"
+                  type="password"
                   className="form-control"
-                  value={form.employment_start_date}
-                  onChange={(event) => updateField("employment_start_date", event.target.value)}
+                  value={form.password}
+                  onChange={(event) => updateField("password", event.target.value)}
+                  placeholder={mode === "create" ? "Leave blank to auto-generate" : "Leave blank to keep current password"}
                 />
               </div>
               <div className="col-lg-6 col-12 form-group">
-                <label htmlFor="staff-qualifications">Qualifications</label>
+                <label htmlFor="staff-password-confirmation">Confirm Password</label>
                 <input
-                  id="staff-qualifications"
-                  type="text"
+                  id="staff-password-confirmation"
+                  type="password"
                   className="form-control"
-                  placeholder="e.g. B.Ed Mathematics"
-                  value={form.qualifications}
-                  onChange={(event) => updateField("qualifications", event.target.value)}
+                  value={form.password_confirmation}
+                  onChange={(event) => updateField("password_confirmation", event.target.value)}
+                  placeholder="Repeat password if setting one"
                 />
               </div>
-              <div className="col-lg-6 col-12 form-group">
-                <label htmlFor="staff-address">Address</label>
-                <input
-                  id="staff-address"
-                  type="text"
-                  className="form-control"
-                  placeholder="e.g. 123 Main Street"
-                  value={form.address}
-                  onChange={(event) => updateField("address", event.target.value)}
-                />
-              </div>
-              <div className="col-lg-6 col-12 form-group">
-                <label htmlFor="staff-photo">Profile Photo</label>
-                <input
-                  id="staff-photo"
-                  type="file"
-                  accept="image/*"
-                  className="form-control-file"
-                  onChange={(event) => setPhotoFile(event.target.files?.[0] ?? null)}
-                />
-              </div>
-              {mode === "edit" ? (
-                <>
-                  <div className="col-lg-6 col-12 form-group">
-                    <label htmlFor="staff-password">New Password</label>
-                    <input
-                      id="staff-password"
-                      type="password"
-                      className="form-control"
-                      value={form.password}
-                      onChange={(event) => updateField("password", event.target.value)}
-                      placeholder="Leave blank to keep current password"
-                    />
-                  </div>
-                  <div className="col-lg-6 col-12 form-group">
-                    <label htmlFor="staff-password-confirmation">Confirm New Password</label>
-                    <input
-                      id="staff-password-confirmation"
-                      type="password"
-                      className="form-control"
-                      value={form.password_confirmation}
-                      onChange={(event) => updateField("password_confirmation", event.target.value)}
-                      placeholder="Repeat the new password"
-                    />
-                  </div>
-                </>
-              ) : null}
             </div>
 
             <div className="d-flex justify-content-end">

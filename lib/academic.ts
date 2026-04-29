@@ -79,6 +79,55 @@ export interface SchoolUser {
   level?: Level | null;
 }
 
+export interface Staff {
+  id: number;
+  school_id: number;
+  user_id: number;
+  staff_id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  department_id: number | null;
+  status: string;
+  user?: SchoolUser | null;
+  department?: Department | null;
+}
+
+export interface StaffCourseAssignment {
+  id: number;
+  school_id: number;
+  staff_id: number;
+  session_id: number;
+  semester_id: number;
+  department_id: number;
+  level_id: number;
+  course_id: number;
+  status: string;
+  staff?: Staff;
+  session?: AcademicSession;
+  semester?: Semester;
+  department?: Department;
+  level?: Level;
+  course?: Course;
+}
+
+export interface StaffExamOfficer {
+  id: number;
+  school_id: number;
+  staff_id: number;
+  session_id: number;
+  semester_id: number;
+  department_id: number;
+  level_id: number | null;
+  scope: "department" | "department_level";
+  status: string;
+  staff?: Staff;
+  session?: AcademicSession;
+  semester?: Semester;
+  department?: Department;
+  level?: Level | null;
+}
+
 type CollectionResponse<T> = { data: T[] };
 type ItemResponse<T> = { data: T };
 
@@ -217,31 +266,51 @@ export async function createUser(payload: {
 }
 
 export async function listStaff() {
-  return listUsers("staff");
+  return (await apiFetch<CollectionResponse<Staff>>("/api/v1/staff")).data;
 }
 
-export async function createStaff(formData: FormData) {
-  return await apiFetch<ItemResponse<SchoolUser> & { temporary_password?: string }>("/api/v1/users", {
+export async function getStaff(id: number) {
+  return (await apiFetch<ItemResponse<Staff>>(`/api/v1/staff/${id}`)).data;
+}
+
+export async function createStaff(payload: {
+  staff_id: string;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  department_id?: number | null;
+  password?: string;
+}) {
+  return await apiFetch<ItemResponse<Staff> & { temporary_password?: string }>("/api/v1/staff", {
     method: "POST",
-    body: formData,
+    body: JSON.stringify(payload),
   });
 }
 
-export async function updateStaff(id: number, formData: FormData) {
-  if (!formData.has("_method")) {
-    formData.append("_method", "PUT");
-  }
-
-  return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/users/${id}`, {
-    method: "POST",
-    body: formData,
+export async function updateStaff(
+  id: number,
+  payload: Partial<{
+    staff_id: string;
+    full_name: string;
+    email: string;
+    phone: string | null;
+    department_id: number | null;
+    password: string;
+    status: string;
+  }>,
+) {
+  return (await apiFetch<ItemResponse<Staff>>(`/api/v1/staff/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
   })).data;
 }
 
-export async function deleteStaff(id: number) {
-  await apiFetch(`/api/v1/users/${id}`, {
-    method: "DELETE",
-  });
+export async function activateStaff(id: number) {
+  return (await apiFetch<ItemResponse<Staff>>(`/api/v1/staff/${id}/activate`, { method: "PATCH" })).data;
+}
+
+export async function deactivateStaff(id: number) {
+  return (await apiFetch<ItemResponse<Staff>>(`/api/v1/staff/${id}/deactivate`, { method: "PATCH" })).data;
 }
 
 export async function updateUser(
@@ -272,4 +341,49 @@ export async function activateUser(id: number) {
 
 export async function deactivateUser(id: number) {
   return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/users/${id}/deactivate`, { method: "PATCH" })).data;
+}
+
+export async function listStaffCourseAssignments(staffId?: number) {
+  const query = staffId ? `?staff_id=${encodeURIComponent(String(staffId))}` : "";
+  return (await apiFetch<CollectionResponse<StaffCourseAssignment>>(`/api/v1/staff-course-assignments${query}`)).data;
+}
+
+export async function createStaffCourseAssignment(payload: {
+  staff_id: number;
+  session_id: number;
+  semester_id: number;
+  department_id: number;
+  level_id: number;
+  course_id: number;
+}) {
+  return (await apiFetch<ItemResponse<StaffCourseAssignment>>("/api/v1/staff-course-assignments", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function deleteStaffCourseAssignment(id: number) {
+  await apiFetch(`/api/v1/staff-course-assignments/${id}`, { method: "DELETE" });
+}
+
+export async function listStaffExamOfficers() {
+  return (await apiFetch<CollectionResponse<StaffExamOfficer>>("/api/v1/staff-exam-officers")).data;
+}
+
+export async function createStaffExamOfficer(payload: {
+  staff_id: number;
+  session_id: number;
+  semester_id: number;
+  department_id: number;
+  level_id?: number | null;
+  scope: "department" | "department_level";
+}) {
+  return (await apiFetch<ItemResponse<StaffExamOfficer>>("/api/v1/staff-exam-officers", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function deleteStaffExamOfficer(id: number) {
+  await apiFetch(`/api/v1/staff-exam-officers/${id}`, { method: "DELETE" });
 }

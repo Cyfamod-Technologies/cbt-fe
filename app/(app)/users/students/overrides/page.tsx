@@ -128,7 +128,7 @@ export default function StudentOverridesPage() {
             <div className="item-title">
               <h3>Student Dept/Level Overrides</h3>
               <p className="mb-0 text-muted">
-                Correct a student's department or level here when the imported assignment is wrong.
+                Correct a student&apos;s department or level here when the imported assignment is wrong.
               </p>
             </div>
           </div>
