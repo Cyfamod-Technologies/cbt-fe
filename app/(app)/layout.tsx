@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 const navigation = [
   { label: "Dashboard", href: "/dashboard", icon: "D" },
-  { label: "Schools", href: "/dashboard#schools", icon: "S" },
   { label: "Licenses", href: "/dashboard#licenses", icon: "L" },
   { label: "Question Bank", href: "/dashboard#questions", icon: "Q" },
   { label: "Exams", href: "/dashboard#exams", icon: "E" },
@@ -15,10 +14,22 @@ const navigation = [
   { label: "Offline Sync", href: "/dashboard#sync", icon: "S" },
 ] as const;
 
+const managementLinks = [
+  { label: "Session", href: "/management/sessions" },
+  { label: "Semesters", href: "/management/semesters" },
+  { label: "Departments", href: "/management/departments" },
+] as const;
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname() || "/dashboard";
+  const managementActive = useMemo(
+    () => managementLinks.some((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)),
+    [pathname],
+  );
+  const [managementOpen, setManagementOpen] = useState(false);
+  const showManagement = managementOpen || managementActive;
 
   useEffect(() => {
     if (loading) {
@@ -115,6 +126,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </li>
                 );
               })}
+              <li className={`nav-item sidebar-nav-item ${managementActive ? "active" : ""}`}>
+                <button
+                  type="button"
+                  className={`nav-link sidebar-nav-button ${managementActive ? "menu-active" : ""}`}
+                  onClick={() => setManagementOpen((current) => !current)}
+                >
+                  <span aria-hidden="true">M</span>
+                  <span>Management</span>
+                </button>
+                <ul className={`sub-group-menu ${showManagement ? "sub-group-active" : ""}`}>
+                  {managementLinks.map((item) => {
+                    const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    return (
+                      <li className="nav-item" key={item.href}>
+                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`}>
+                          <span>{item.label}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
             </ul>
           </div>
         </aside>
