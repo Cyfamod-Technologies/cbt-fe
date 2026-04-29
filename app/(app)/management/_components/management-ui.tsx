@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import {
+  createCourse,
   addDepartmentLevel,
   createDepartment,
   createSemester,
@@ -11,10 +12,12 @@ import {
   listDepartments,
   listSemesters,
   listSessions,
+  listCourses,
   removeDepartmentLevel,
   setCurrentSemester,
   setCurrentSession,
   type AcademicSession,
+  type Course,
   type Department,
   type SchoolSettings,
   type Semester,
@@ -29,6 +32,7 @@ export function ManagementShell({
   title: string;
   current: string;
   children: ReactNode;
+    updateCourse,
 }) {
   return (
     <>
@@ -41,6 +45,7 @@ export function ManagementShell({
           <li>Management</li>
           <li>{current}</li>
         </ul>
+    const [editingCourseId, setEditingCourseId] = useState<number | null>(null);
       </div>
       {children}
     </>
@@ -70,18 +75,41 @@ export function SessionsManagementPage() {
     void load();
   }, [load]);
 
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    await runAction(
-      async () => {
-        await createSession({ name: name.trim(), is_current: sessions.length === 0 });
+          if (editingCourseId) {
+            await updateCourse(editingCourseId, {
+              department_id: Number(form.departmentId),
+              code: form.code.trim(),
+              title: form.title.trim(),
+            });
+          } else {
+            await createCourse({
+              department_id: Number(form.departmentId),
+              code: form.code.trim(),
+              title: form.title.trim(),
+            });
+          }
         setName("");
+          setEditingCourseId(null);
       },
-      "Session created.",
+        editingCourseId ? "Course updated." : "Course created.",
       load,
       setFeedback,
     );
   };
+
+    const startEdit = (course: Course) => {
+      setEditingCourseId(course.id);
+      setForm({
+        departmentId: String(course.department_id),
+        code: course.code,
+        title: course.title,
+      });
+    };
+
+    const cancelEdit = () => {
+      setEditingCourseId(null);
+      setForm((current) => ({ ...current, code: "", title: "" }));
+    };
 
   const chooseCurrent = async (id: number) => {
     await runAction(
@@ -120,20 +148,34 @@ export function SessionsManagementPage() {
             headers={["Name", "Status", "Current", "Action"]}
             rows={sessions.map((session) => [
               session.name,
-              session.status,
+                {editingCourseId ? "Update Course" : "Save Course"}
               session.is_current ? <span className="badge badge-success">Current</span> : "No",
+              {editingCourseId ? (
+                <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelEdit}>
+                  Cancel Edit
+                </button>
+              ) : null}
               session.is_current ? (
                 ""
               ) : (
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-secondary"
-                  disabled={!canManageCatalog}
+              headers={["Code", "Title", "Department", "Status", "Action"]}
                   onClick={() => chooseCurrent(session.id)}
                 >
                   Set Current
                 </button>
               ),
+                <button
+                  key={`edit-${course.id}`}
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary"
+                  disabled={!canManageCatalog}
+                  onClick={() => startEdit(course)}
+                >
+                  Edit
+                </button>,
             ])}
           />
         </div>
@@ -401,6 +443,150 @@ export function DepartmentsManagementPage() {
                 onRemove={detachLevel}
               />,
               department.status,
+            ])}
+          />
+        </div>
+      </div>
+    </ManagementShell>
+  );
+}
+
+export function CoursesManagementPage() {
+  const { user } = useAuth();
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [form, setForm] = useState({ departmentId: "", code: "", title: "" });
+  const [editingCourseId, setEditingCourseId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [departmentData, courseData] = await Promise.all([listDepartments(), listCourses()]);
+      setDepartments(departmentData);
+      setCourses(courseData);
+      setForm((current) => ({
+        ...current,
+        departmentId: current.departmentId || String(departmentData[0]?.id || ""),
+      }));
+    } catch (error) {
+      setFeedback(toDanger(error, "Unable to load courses."));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    await runAction(
+      async () => {
+        if (editingCourseId) {
+          await updateCourse(editingCourseId, {
+            department_id: Number(form.departmentId),
+            code: form.code.trim(),
+            title: form.title.trim(),
+          });
+        } else {
+          await createCourse({
+            department_id: Number(form.departmentId),
+            code: form.code.trim(),
+            title: form.title.trim(),
+          });
+        }
+        setForm((current) => ({ ...current, code: "", title: "" }));
+        setEditingCourseId(null);
+      },
+      editingCourseId ? "Course updated." : "Course created.",
+      load,
+      setFeedback,
+    );
+  };
+
+  const startEdit = (course: Course) => {
+    setEditingCourseId(course.id);
+    setForm({
+      departmentId: String(course.department_id),
+      code: course.code,
+      title: course.title,
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingCourseId(null);
+    setForm((current) => ({ ...current, code: "", title: "" }));
+  };
+
+  return (
+    <ManagementShell title="Courses" current="Departments / Courses">
+      <FeedbackAlert feedback={feedback} />
+      <div className="row">
+        <div className="col-lg-4 col-12">
+          <FormCard title={editingCourseId ? "Edit Course" : "Create Course"} onSubmit={submit} disabled={!canManageCatalog}>
+            <label>Department</label>
+            <select
+              className="form-control"
+              value={form.departmentId}
+              onChange={(event) => setForm((current) => ({ ...current, departmentId: event.target.value }))}
+              required
+            >
+              <option value="">Select Department</option>
+              {departments.map((department) => (
+                <option key={department.id} value={department.id}>
+                  {department.name}
+                </option>
+              ))}
+            </select>
+            <label className="mt-3">Course Code</label>
+            <input
+              className="form-control"
+              placeholder="GST101"
+              value={form.code}
+              onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
+              required
+            />
+            <label className="mt-3">Course Title</label>
+            <input
+              className="form-control"
+              placeholder="Use of English"
+              value={form.title}
+              onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+              required
+            />
+            <button type="submit" className="btn btn-primary mt-3">
+              {editingCourseId ? "Update Course" : "Save Course"}
+            </button>
+            {editingCourseId ? (
+              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelEdit}>
+                Cancel Edit
+              </button>
+            ) : null}
+          </FormCard>
+        </div>
+        <div className="col-lg-8 col-12">
+          <TableCard
+            title="All Courses"
+            loading={loading}
+            headers={["Code", "Title", "Department", "Status", "Action"]}
+            rows={courses.map((course) => [
+              course.code,
+              course.title,
+              course.department?.name || "",
+              course.status,
+              <button
+                key={`edit-${course.id}`}
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                disabled={!canManageCatalog}
+                onClick={() => startEdit(course)}
+              >
+                Edit
+              </button>,
             ])}
           />
         </div>

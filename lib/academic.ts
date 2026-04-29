@@ -39,8 +39,8 @@ export interface Course {
   code: string;
   title: string;
   department_id: number;
-  level_id: number;
-  semester_id: number;
+  level_id: number | null;
+  semester_id: number | null;
   status: string;
   department?: Department;
   level?: Level;
@@ -136,11 +136,27 @@ export async function createCourse(payload: {
   code: string;
   title: string;
   department_id: number;
-  level_id: number;
-  semester_id: number;
+  level_id?: number | null;
+  semester_id?: number | null;
 }) {
   return (await apiFetch<ItemResponse<Course>>("/api/v1/courses", {
     method: "POST",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function updateCourse(
+  id: number,
+  payload: {
+    code?: string;
+    title?: string;
+    department_id?: number;
+    level_id?: number | null;
+    semester_id?: number | null;
+  },
+) {
+  return (await apiFetch<ItemResponse<Course>>(`/api/v1/courses/${id}`, {
+    method: "PUT",
     body: JSON.stringify(payload),
   })).data;
 }

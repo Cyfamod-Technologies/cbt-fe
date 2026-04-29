@@ -151,7 +151,7 @@ export default function DashboardPage() {
                     <tr>
                       <td>Courses</td>
                       <td>{loading ? "..." : counts.courses}</td>
-                      <td>Department, level, semester scoped</td>
+                      <td>Department scoped</td>
                     </tr>
                   </tbody>
                 </table>
