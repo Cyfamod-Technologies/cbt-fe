@@ -8,10 +8,8 @@ import {
   createStaff,
   deactivateStaff,
   getStaff,
-  listDepartments,
   listStaff,
   updateStaff,
-  type Department,
   type Staff,
 } from "@/lib/academic";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,7 +19,6 @@ type StaffFormState = {
   full_name: string;
   email: string;
   phone: string;
-  department_id: string;
   password: string;
   password_confirmation: string;
 };
@@ -31,7 +28,6 @@ const emptyForm: StaffFormState = {
   full_name: "",
   email: "",
   phone: "",
-  department_id: "",
   password: "",
   password_confirmation: "",
 };
@@ -218,31 +214,10 @@ export function StaffFormPage({ mode }: { mode: "create" | "edit" }) {
   const searchParams = useSearchParams();
   const staffId = searchParams.get("id");
   const [form, setForm] = useState<StaffFormState>(emptyForm);
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(mode === "edit");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-
-    void listDepartments()
-      .then((items) => {
-        if (active) {
-          setDepartments(items);
-        }
-      })
-      .catch((err) => {
-        if (active) {
-          setError(err instanceof Error ? err.message : "Unable to load departments.");
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (mode !== "edit") {
@@ -267,7 +242,6 @@ export function StaffFormPage({ mode }: { mode: "create" | "edit" }) {
           full_name: staff.full_name,
           email: staff.email ?? "",
           phone: staff.phone ?? "",
-          department_id: staff.department_id ? String(staff.department_id) : "",
           password: "",
           password_confirmation: "",
         });
@@ -335,7 +309,6 @@ export function StaffFormPage({ mode }: { mode: "create" | "edit" }) {
       full_name: form.full_name.trim(),
       email: form.email.trim(),
       phone: form.phone.trim(),
-      department_id: form.department_id ? Number(form.department_id) : null,
       ...(form.password ? { password: form.password } : {}),
     };
 
@@ -469,22 +442,6 @@ export function StaffFormPage({ mode }: { mode: "create" | "edit" }) {
                   onChange={(event) => updateField("phone", event.target.value)}
                   required
                 />
-              </div>
-              <div className="col-lg-6 col-12 form-group">
-                <label htmlFor="staff-department">Department</label>
-                <select
-                  id="staff-department"
-                  className="form-control"
-                  value={form.department_id}
-                  onChange={(event) => updateField("department_id", event.target.value)}
-                >
-                  <option value="">Select department</option>
-                  {departments.map((department) => (
-                    <option key={department.id} value={department.id}>
-                      {department.name}
-                    </option>
-                  ))}
-                </select>
               </div>
               <div className="col-lg-6 col-12 form-group">
                 <label htmlFor="staff-password">{mode === "create" ? "Password" : "New Password"}</label>

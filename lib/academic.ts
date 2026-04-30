@@ -142,6 +142,13 @@ export async function createSession(payload: { name: string; is_current?: boolea
   })).data;
 }
 
+export async function updateSession(id: number, payload: { name?: string; is_current?: boolean; status?: string }) {
+  return (await apiFetch<ItemResponse<AcademicSession>>(`/api/v1/sessions/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
 export async function setCurrentSession(id: number) {
   return (await apiFetch<ItemResponse<AcademicSession>>(`/api/v1/sessions/${id}/current`, {
     method: "PATCH",
@@ -159,6 +166,13 @@ export async function createSemester(payload: { name: string; session_id: number
   })).data;
 }
 
+export async function updateSemester(id: number, payload: { name?: string; session_id?: number; status?: string }) {
+  return (await apiFetch<ItemResponse<Semester>>(`/api/v1/semesters/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
 export async function setCurrentSemester(id: number) {
   return (await apiFetch<ItemResponse<Semester>>(`/api/v1/semesters/${id}/current`, {
     method: "PATCH",
@@ -172,6 +186,13 @@ export async function listDepartments() {
 export async function createDepartment(payload: { name: string; code?: string }) {
   return (await apiFetch<ItemResponse<Department>>("/api/v1/departments", {
     method: "POST",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function updateDepartment(id: number, payload: { name?: string; code?: string | null; status?: string }) {
+  return (await apiFetch<ItemResponse<Department>>(`/api/v1/departments/${id}`, {
+    method: "PUT",
     body: JSON.stringify(payload),
   })).data;
 }
@@ -196,6 +217,13 @@ export async function listLevels() {
 export async function createLevel(payload: { name: string }) {
   return (await apiFetch<ItemResponse<Level>>("/api/v1/levels", {
     method: "POST",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function updateLevel(id: number, payload: { name?: string; status?: string }) {
+  return (await apiFetch<ItemResponse<Level>>(`/api/v1/levels/${id}`, {
+    method: "PUT",
     body: JSON.stringify(payload),
   })).data;
 }

@@ -23,6 +23,7 @@ const managementLinks = [
 
 const userLinks = [
   { label: "Staff", href: "/users/staff" },
+  { label: "Staff Bulk Upload", href: "/users/staff/bulk-upload" },
 ] as const;
 
 const studentLinks = [

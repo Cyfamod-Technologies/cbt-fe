@@ -12,14 +12,6 @@ import {
   type SchoolSettings,
 } from "@/lib/academic";
 
-const workflowRows = [
-  ["Foundation", "Auth, roles, current user, API client", "Done"],
-  ["Catalog", "Sessions, semesters, departments, levels, courses", "In progress"],
-  ["Question Workflow", "Create, export, import, review, approve", "Planned"],
-  ["Assessment Workflow", "Schedule, register students, attempt lifecycle", "Planned"],
-  ["Results", "Score, publish, review according to settings", "Planned"],
-] as const;
-
 export default function DashboardPage() {
   const [counts, setCounts] = useState({
     sessions: 0,
@@ -116,7 +108,6 @@ export default function DashboardPage() {
                 <div className="item-title">
                   <h3>Academic Foundation</h3>
                 </div>
-                <span className="badge badge-info">V1.1</span>
               </div>
               <div className="table-responsive">
                 <table className="table">
@@ -159,16 +150,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="card height-auto" id="questions">
-            <div className="card-body">
-              <div className="heading-layout1">
-                <div className="item-title">
-                  <h3>Build Workflow</h3>
-                </div>
-              </div>
-              <SimpleTable headers={["Phase", "Scope", "Status"]} rows={workflowRows.map((row) => [...row])} />
-            </div>
-          </div>
         </div>
 
         <div className="col-lg-4 col-12">
@@ -215,30 +196,5 @@ export default function DashboardPage() {
         </div>
       </div>
     </>
-  );
-}
-
-function SimpleTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
-  return (
-    <div className="table-responsive">
-      <table className="table">
-        <thead>
-          <tr>
-            {headers.map((header) => (
-              <th key={header}>{header}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={`${row.join("-")}-${index}`}>
-              {row.map((cell, cellIndex) => (
-                <td key={`${cell}-${cellIndex}`}>{cell}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
   );
 }

@@ -15,6 +15,8 @@ import {
   type SchoolUser,
 } from "@/lib/academic";
 import { useAuth } from "@/contexts/AuthContext";
+import { listAssessmentAttempts, type AssessmentAttempt } from "@/lib/cbt";
+import { formatDateTime, formatResultScore, statusBadgeClass } from "@/app/(app)/cbt/_components/cbt-utils";
 
 type Role = "staff" | "student";
 
@@ -202,8 +204,12 @@ export function StudentsPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [loading, setLoading] = useState(true);
+  const [attemptsLoading, setAttemptsLoading] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [viewStudent, setViewStudent] = useState<SchoolUser | null>(null);
+  const [studentAttempts, setStudentAttempts] = useState<AssessmentAttempt[]>([]);
+  const [filters, setFilters] = useState({ search: "", departmentId: "", levelId: "", status: "all" });
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState({
     matric_no: "",
@@ -339,6 +345,42 @@ export function StudentsPage() {
     );
   };
 
+  const filteredStudents = students.filter((student) => {
+    const search = filters.search.trim().toLowerCase();
+    const haystack = [student.name, student.matric_no, student.student_id_no, student.phone, student.department?.name, student.level?.name]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    if (search && !haystack.includes(search)) {
+      return false;
+    }
+    if (filters.departmentId && String(student.department_id || "") !== filters.departmentId) {
+      return false;
+    }
+    if (filters.levelId && String(student.level_id || "") !== filters.levelId) {
+      return false;
+    }
+    if (filters.status !== "all" && student.status !== filters.status) {
+      return false;
+    }
+    return true;
+  });
+
+  const showStudent = async (student: SchoolUser) => {
+    setViewStudent(student);
+    setAttemptsLoading(true);
+    try {
+      const attempts = await listAssessmentAttempts();
+      setStudentAttempts(attempts.filter((attempt) => attempt.student_id === student.id));
+    } catch (error) {
+      setFeedback(toDanger(error, "Unable to load student quiz history."));
+      setStudentAttempts([]);
+    } finally {
+      setAttemptsLoading(false);
+    }
+  };
+
   const cancelEdit = () => {
     setEditingUserId(null);
     setFormOpen(false);
@@ -385,14 +427,46 @@ export function StudentsPage() {
                 Add Student
               </button>
               <button type="button" className="btn btn-lg btn-warning" disabled>
-                Upload CSV
-              </button>
-              <button type="button" className="btn btn-lg btn-warning" disabled>
                 Overrides
               </button>
-              <button type="button" className="btn btn-lg btn-warning" disabled>
-                Student Courses
-              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="card height-auto mb-4">
+        <div className="card-body">
+          <div className="heading-layout1">
+            <div className="item-title">
+              <h3>Search & Filter</h3>
+            </div>
+          </div>
+          <div className="student-filter-grid">
+            <div className="form-group">
+              <label>Search</label>
+              <input className="form-control" placeholder="Name, matric no, student ID, phone" value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label>Department</label>
+              <select className="form-control" value={filters.departmentId} onChange={(event) => setFilters((current) => ({ ...current, departmentId: event.target.value }))}>
+                <option value="">All departments</option>
+                {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Level</label>
+              <select className="form-control" value={filters.levelId} onChange={(event) => setFilters((current) => ({ ...current, levelId: event.target.value }))}>
+                <option value="">All levels</option>
+                {levels.map((level) => <option key={level.id} value={level.id}>{level.name}</option>)}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Status</label>
+              <select className="form-control" value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
+                <option value="all">All statuses</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </div>
           </div>
         </div>
@@ -485,20 +559,95 @@ export function StudentsPage() {
         </div>
       ) : null}
 
+      {viewStudent ? (
+        <div className="card height-auto mb-4">
+          <div className="card-body">
+            <div className="heading-layout1">
+              <div className="item-title">
+                <h3>Student Profile</h3>
+              </div>
+              <div className="cbt-actions">
+                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={!canManageUsers} onClick={() => startEdit(viewStudent)}>
+                  Edit
+                </button>
+                <button type="button" className="btn btn-sm btn-danger" disabled={!canManageUsers} onClick={() => toggleStatus(viewStudent)}>
+                  {viewStudent.status === "active" ? "Deactivate" : "Activate"}
+                </button>
+                <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setViewStudent(null)}>
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="student-profile-grid">
+              <div><span>Full Name</span><strong>{viewStudent.name}</strong></div>
+              <div><span>Matric No</span><strong>{viewStudent.matric_no || "-"}</strong></div>
+              <div><span>Student ID</span><strong>{viewStudent.student_id_no || "-"}</strong></div>
+              <div><span>Department</span><strong>{viewStudent.department?.name || "-"}</strong></div>
+              <div><span>Level</span><strong>{viewStudent.level?.name || "-"}</strong></div>
+              <div><span>Phone</span><strong>{viewStudent.phone || "-"}</strong></div>
+              <div><span>Email</span><strong>{viewStudent.email || "-"}</strong></div>
+              <div><span>Status</span><strong>{viewStudent.status}</strong></div>
+            </div>
+
+            <div className="heading-layout1 mt-3">
+              <div className="item-title">
+                <h3>Quiz History</h3>
+              </div>
+            </div>
+            {attemptsLoading ? (
+              <div className="text-muted">Loading quiz history...</div>
+            ) : (
+              <div className="table-responsive">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Quiz</th>
+                      <th>Status</th>
+                      <th>Score</th>
+                      <th>Started</th>
+                      <th>Submitted</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {studentAttempts.length === 0 ? (
+                      <tr><td colSpan={5}>No quiz attempts found.</td></tr>
+                    ) : (
+                      studentAttempts.map((attempt) => (
+                        <tr key={attempt.id}>
+                          <td>{attempt.assessment?.title || `Assessment #${attempt.assessment_id}`}</td>
+                          <td><span className={statusBadgeClass(attempt.status)}>{attempt.status}</span></td>
+                          <td>{formatResultScore(attempt)}</td>
+                          <td>{formatDateTime(attempt.start_time)}</td>
+                          <td>{formatDateTime(attempt.end_time)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : null}
+
       <TableCard
         title="Student List"
         loading={loading}
-        headers={["Matric No", "Student ID No", "Full Name", "Department", "Level", "Email", "Phone", "Status", "Action"]}
-        rows={students.map((student) => [
+        headers={["Matric No", "Student ID No", "Full Name", "Phone", "Status", "Action"]}
+        rows={filteredStudents.map((student) => [
           student.matric_no || "-",
           student.student_id_no || "-",
           student.name,
-          student.department?.name || "-",
-          student.level?.name || "-",
-          student.email || "-",
           student.phone || "-",
           student.status,
           <div key={`student-actions-${student.id}`} className="d-flex gap-2">
+            <button
+              type="button"
+              className="btn btn-warning btn-sm"
+              onClick={() => showStudent(student)}
+            >
+              View
+            </button>
             <button
               type="button"
               className="btn btn-warning btn-sm"
@@ -506,14 +655,6 @@ export function StudentsPage() {
               onClick={() => startEdit(student)}
             >
               Edit
-            </button>
-            <button
-              type="button"
-              className="btn btn-warning btn-sm"
-              disabled={!canManageUsers}
-              onClick={() => toggleStatus(student)}
-            >
-              {student.status === "active" ? "Deactivate" : "Activate"}
             </button>
           </div>,
         ])}

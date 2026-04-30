@@ -14,6 +14,13 @@ interface QuizResultsProps {
 export function QuizResults({ assessmentId, attemptId, review }: QuizResultsProps) {
   const [attempts, setAttempts] = useState<AssessmentAttempt[]>([]);
   const [attempt, setAttempt] = useState<AssessmentAttempt | null>(null);
+  const [filters, setFilters] = useState({
+    search: "",
+    status: "all",
+    grade: "all",
+    from: "",
+    to: "",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +49,50 @@ export function QuizResults({ assessmentId, attemptId, review }: QuizResultsProp
     }
     return assessmentId ? "Quiz Results" : "Attempt History";
   }, [assessmentId, attemptId, review]);
+
+  const filteredAttempts = useMemo(() => {
+    const search = filters.search.trim().toLowerCase();
+    const from = filters.from ? new Date(filters.from).getTime() : null;
+    const to = filters.to ? new Date(filters.to).getTime() : null;
+
+    return attempts.filter((item) => {
+      const haystack = [
+        item.assessment?.title,
+        item.assessment?.code,
+        item.student?.name,
+        item.student?.matric_no,
+        item.grade,
+        item.status,
+      ].filter(Boolean).join(" ").toLowerCase();
+
+      if (search && !haystack.includes(search)) {
+        return false;
+      }
+
+      if (filters.status !== "all" && item.status !== filters.status) {
+        return false;
+      }
+
+      if (filters.grade !== "all" && (item.grade || "none") !== filters.grade) {
+        return false;
+      }
+
+      const traceDate = item.end_time || item.start_time;
+      const traceTime = traceDate ? new Date(traceDate).getTime() : null;
+      if (from && (!traceTime || traceTime < from)) {
+        return false;
+      }
+      if (to && (!traceTime || traceTime > to)) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [attempts, filters]);
+
+  const updateFilter = (key: keyof typeof filters, value: string) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+  };
 
   return (
     <>
@@ -97,6 +148,51 @@ export function QuizResults({ assessmentId, attemptId, review }: QuizResultsProp
       ) : (
         <div className="card">
           <div className="card-body">
+            <div className="cbt-result-filter">
+              <div className="form-group">
+                <label>Search student or quiz</label>
+                <input
+                  className="form-control"
+                  placeholder="Name, matric no, quiz title"
+                  value={filters.search}
+                  onChange={(event) => updateFilter("search", event.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label>Status</label>
+                <select className="form-control" value={filters.status} onChange={(event) => updateFilter("status", event.target.value)}>
+                  <option value="all">All statuses</option>
+                  <option value="in_progress">In progress</option>
+                  <option value="submitted">Submitted</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Grade</label>
+                <select className="form-control" value={filters.grade} onChange={(event) => updateFilter("grade", event.target.value)}>
+                  <option value="all">All grades</option>
+                  <option value="pass">Pass</option>
+                  <option value="fail">Fail</option>
+                  <option value="none">No grade</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>From date/time</label>
+                <input className="form-control" type="datetime-local" value={filters.from} onChange={(event) => updateFilter("from", event.target.value)} />
+              </div>
+              <div className="form-group">
+                <label>To date/time</label>
+                <input className="form-control" type="datetime-local" value={filters.to} onChange={(event) => updateFilter("to", event.target.value)} />
+              </div>
+              <div className="form-group cbt-filter-actions">
+                <label>&nbsp;</label>
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setFilters({ search: "", status: "all", grade: "all", from: "", to: "" })}>
+                  Reset
+                </button>
+              </div>
+            </div>
+            <div className="text-muted small mg-b-20">
+              Showing {filteredAttempts.length} of {attempts.length} attempt(s). Use the date/time range to trace exams written by a student.
+            </div>
             <div className="table-responsive">
               <table className="table">
                 <thead>
@@ -110,13 +206,19 @@ export function QuizResults({ assessmentId, attemptId, review }: QuizResultsProp
                   </tr>
                 </thead>
                 <tbody>
-                  {attempts.length === 0 ? (
+                  {filteredAttempts.length === 0 ? (
                     <tr><td colSpan={6}>No results found.</td></tr>
                   ) : (
-                    attempts.map((item) => (
+                    filteredAttempts.map((item) => (
                       <tr key={item.id}>
-                        <td>{item.assessment?.title || `Assessment #${item.assessment_id}`}</td>
-                        <td>{item.student?.name || `Student #${item.student_id}`}</td>
+                        <td>
+                          <div className="font-weight-bold text-dark">{item.assessment?.title || `Assessment #${item.assessment_id}`}</div>
+                          <div className="text-muted small">{item.assessment?.code || "-"}</div>
+                        </td>
+                        <td>
+                          <div className="font-weight-bold text-dark">{item.student?.name || `Student #${item.student_id}`}</div>
+                          <div className="text-muted small">{item.student?.matric_no || "-"}</div>
+                        </td>
                         <td><span className={statusBadgeClass(item.status)}>{item.status}</span></td>
                         <td>{formatResultScore(item)}</td>
                         <td>{formatDateTime(item.end_time)}</td>

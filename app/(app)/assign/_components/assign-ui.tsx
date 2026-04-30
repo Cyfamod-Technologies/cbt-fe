@@ -273,6 +273,13 @@ export function LecturerCourseAssignmentsPage() {
           </FormCard>
         </div>
         <div className="col-lg-8 col-12">
+          <AssignmentSummary
+            cards={[
+              ["Assignments", assignments.length],
+              ["Filtered", filteredAssignments.length],
+              ["Courses", options.courses.length],
+            ]}
+          />
           <FilterCard
             filters={filters}
             setFilters={setFilters}
@@ -527,6 +534,13 @@ export function ExamOfficerAssignmentsPage() {
           </FormCard>
         </div>
         <div className="col-lg-8 col-12">
+          <AssignmentSummary
+            cards={[
+              ["Assignments", assignments.length],
+              ["Filtered", filteredAssignments.length],
+              ["Departments", options.departments.length],
+            ]}
+          />
           <FilterCard
             filters={filters}
             setFilters={setFilters}
@@ -709,6 +723,19 @@ function FilterCard({
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+function AssignmentSummary({ cards }: { cards: Array<[string, number]> }) {
+  return (
+    <div className="assignment-summary-grid mb-3">
+      {cards.map(([label, value]) => (
+        <div className="assignment-summary-card" key={label}>
+          <span>{label}</span>
+          <strong>{value}</strong>
+        </div>
+      ))}
     </div>
   );
 }

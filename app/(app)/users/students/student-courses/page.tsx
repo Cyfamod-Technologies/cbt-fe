@@ -9,6 +9,7 @@ export default function StudentCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [settings, setSettings] = useState<SchoolSettings | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
+  const [courseSearch, setCourseSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
@@ -78,6 +79,16 @@ export default function StudentCoursesPage() {
     return courses.filter((course) => !eligibleCourses.some((eligible) => eligible.id === course.id));
   }, [courses, eligibleCourses, selectedStudent]);
 
+  const visibleEligibleCourses = useMemo(
+    () => filterCourses(eligibleCourses, courseSearch),
+    [courseSearch, eligibleCourses],
+  );
+
+  const visibleExcludedCourses = useMemo(
+    () => filterCourses(excludedCourses, courseSearch),
+    [courseSearch, excludedCourses],
+  );
+
   return (
     <>
       <div className="breadcrumbs-area">
@@ -127,7 +138,7 @@ export default function StudentCoursesPage() {
               </select>
             </div>
             <div className="col-12 col-lg-8 mt-3 mt-lg-0">
-              <div className="row">
+              <div className="course-summary-grid">
                 <StatCard label="Students" value={students.length} />
                 <StatCard label="Courses" value={courses.length} />
                 <StatCard label="Eligible" value={eligibleCourses.length} />
@@ -149,12 +160,24 @@ export default function StudentCoursesPage() {
               <div className="heading-layout1 mb-0">
                 <div className="item-title">
                   <h3>{selectedStudent.name}</h3>
-                  <p className="mb-0 text-muted">
-                    {selectedStudent.matric_no ? `Matric No: ${selectedStudent.matric_no}` : "Matric No not set"}
-                    {selectedStudent.department?.name ? ` | Department: ${selectedStudent.department.name}` : ""}
-                    {selectedStudent.level?.name ? ` | Level: ${selectedStudent.level.name}` : ""}
-                    {settings?.current_semester?.name ? ` | Semester: ${settings.current_semester.name}` : ""}
-                  </p>
+                </div>
+              </div>
+              <div className="course-context-grid mt-3">
+                <div>
+                  <span>Matric No</span>
+                  <strong>{selectedStudent.matric_no || "Not set"}</strong>
+                </div>
+                <div>
+                  <span>Department</span>
+                  <strong>{selectedStudent.department?.name || "Not assigned"}</strong>
+                </div>
+                <div>
+                  <span>Level</span>
+                  <strong>{selectedStudent.level?.name || "Not assigned"}</strong>
+                </div>
+                <div>
+                  <span>Current Semester</span>
+                  <strong>{settings?.current_semester?.name || "Any semester"}</strong>
                 </div>
               </div>
             </div>
@@ -166,6 +189,13 @@ export default function StudentCoursesPage() {
                 <div className="item-title">
                   <h3>Eligible Courses</h3>
                 </div>
+                <input
+                  className="form-control"
+                  style={{ maxWidth: 320 }}
+                  placeholder="Search courses"
+                  value={courseSearch}
+                  onChange={(event) => setCourseSearch(event.target.value)}
+                />
               </div>
               <div className="table-responsive">
                 <table className="table">
@@ -180,14 +210,14 @@ export default function StudentCoursesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {eligibleCourses.length === 0 ? (
+                    {visibleEligibleCourses.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-muted">
                           No matching courses found for this student.
                         </td>
                       </tr>
                     ) : (
-                      eligibleCourses.map((course) => (
+                      visibleEligibleCourses.map((course) => (
                         <tr key={course.id}>
                           <td>{course.code}</td>
                           <td>{course.title}</td>
@@ -221,14 +251,14 @@ export default function StudentCoursesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {excludedCourses.length === 0 ? (
+                    {visibleExcludedCourses.length === 0 ? (
                       <tr>
                         <td colSpan={3} className="text-muted">
                           All loaded courses are eligible for this student.
                         </td>
                       </tr>
                     ) : (
-                      excludedCourses.map((course) => {
+                      visibleExcludedCourses.map((course) => {
                         const reasons = [];
 
                         if (course.department_id !== selectedStudent.department_id) {
@@ -269,12 +299,25 @@ export default function StudentCoursesPage() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="col-6 col-xl-3 mb-3 mb-xl-0">
-      <div className="bg-white border rounded p-3 h-100">
-        <div className="text-muted small">{label}</div>
-        <div className="h4 mb-0">{value}</div>
-      </div>
+    <div className="course-summary-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
+  );
+}
+
+function filterCourses(courses: Course[], search: string) {
+  const query = search.trim().toLowerCase();
+  if (!query) {
+    return courses;
+  }
+
+  return courses.filter((course) =>
+    [course.code, course.title, course.department?.name, course.level?.name, course.semester?.name, course.status]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(query),
   );
 }
 

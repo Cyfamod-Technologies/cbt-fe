@@ -13,13 +13,17 @@ import {
   listDepartments,
   listSemesters,
   listSessions,
-  removeDepartmentLevel,
   setCurrentSemester,
   setCurrentSession,
   updateCourse,
+  updateDepartment,
+  updateLevel,
+  updateSemester,
+  updateSession,
   type AcademicSession,
   type Course,
   type Department,
+  type Level,
   type SchoolSettings,
   type Semester,
 } from "@/lib/academic";
@@ -55,6 +59,8 @@ export function SessionsManagementPage() {
   const { user } = useAuth();
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
   const [name, setName] = useState("");
+  const [status, setStatus] = useState("active");
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
@@ -78,10 +84,16 @@ export function SessionsManagementPage() {
     event.preventDefault();
     await runAction(
       async () => {
-        await createSession({ name: name.trim(), is_current: sessions.length === 0 });
+        if (editingId) {
+          await updateSession(editingId, { name: name.trim(), status });
+        } else {
+          await createSession({ name: name.trim(), is_current: sessions.length === 0 });
+        }
         setName("");
+        setStatus("active");
+        setEditingId(null);
       },
-      "Session created.",
+      editingId ? "Session updated." : "Session created.",
       load,
       setFeedback,
     );
@@ -98,12 +110,24 @@ export function SessionsManagementPage() {
     );
   };
 
+  const startEdit = (session: AcademicSession) => {
+    setEditingId(session.id);
+    setName(session.name);
+    setStatus(session.status);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setName("");
+    setStatus("active");
+  };
+
   return (
     <ManagementShell title="Sessions" current="Session">
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
-          <FormCard title="Create Session" onSubmit={submit} disabled={!canManageCatalog}>
+          <FormCard title={editingId ? "Edit Session" : "Create Session"} onSubmit={submit} disabled={!canManageCatalog}>
             <label>Session Name</label>
             <input
               className="form-control"
@@ -112,9 +136,19 @@ export function SessionsManagementPage() {
               onChange={(event) => setName(event.target.value)}
               required
             />
+            <label className="mt-3">Status</label>
+            <select className="form-control" value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
             <button type="submit" className="btn btn-primary mt-3">
-              Save Session
+              {editingId ? "Update Session" : "Save Session"}
             </button>
+            {editingId ? (
+              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelEdit}>
+                Cancel Edit
+              </button>
+            ) : null}
           </FormCard>
         </div>
         <div className="col-lg-8 col-12">
@@ -126,18 +160,21 @@ export function SessionsManagementPage() {
               session.name,
               session.status,
               session.is_current ? <span className="badge badge-success">Current</span> : "No",
-              session.is_current ? (
-                ""
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary"
-                  disabled={!canManageCatalog}
-                  onClick={() => chooseCurrent(session.id)}
-                >
-                  Set Current
+              <div key={`session-actions-${session.id}`} className="cbt-actions">
+                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={!canManageCatalog} onClick={() => startEdit(session)}>
+                  Edit
                 </button>
-              ),
+                {!session.is_current ? (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    disabled={!canManageCatalog}
+                    onClick={() => chooseCurrent(session.id)}
+                  >
+                    Set Current
+                  </button>
+                ) : null}
+              </div>,
             ])}
           />
         </div>
@@ -153,6 +190,8 @@ export function SemestersManagementPage() {
   const [settings, setSettings] = useState<SchoolSettings | null>(null);
   const [name, setName] = useState("");
   const [sessionId, setSessionId] = useState("");
+  const [status, setStatus] = useState("active");
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
@@ -184,10 +223,16 @@ export function SemestersManagementPage() {
     event.preventDefault();
     await runAction(
       async () => {
-        await createSemester({ name: name.trim(), session_id: Number(sessionId) });
+        if (editingId) {
+          await updateSemester(editingId, { name: name.trim(), session_id: Number(sessionId), status });
+        } else {
+          await createSemester({ name: name.trim(), session_id: Number(sessionId) });
+        }
         setName("");
+        setStatus("active");
+        setEditingId(null);
       },
-      "Semester created.",
+      editingId ? "Semester updated." : "Semester created.",
       load,
       setFeedback,
     );
@@ -204,12 +249,26 @@ export function SemestersManagementPage() {
     );
   };
 
+  const startEdit = (semester: Semester) => {
+    setEditingId(semester.id);
+    setName(semester.name);
+    setSessionId(String(semester.session_id));
+    setStatus(semester.status);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setName("");
+    setStatus("active");
+    setSessionId(String(settings?.current_session_id || sessions[0]?.id || ""));
+  };
+
   return (
     <ManagementShell title="Semesters" current="Semesters">
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
-          <FormCard title="Create Semester" onSubmit={submit} disabled={!canManageCatalog}>
+          <FormCard title={editingId ? "Edit Semester" : "Create Semester"} onSubmit={submit} disabled={!canManageCatalog}>
             <label>Session</label>
             <select
               className="form-control"
@@ -232,9 +291,19 @@ export function SemestersManagementPage() {
               onChange={(event) => setName(event.target.value)}
               required
             />
+            <label className="mt-3">Status</label>
+            <select className="form-control" value={status} onChange={(event) => setStatus(event.target.value)}>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
             <button type="submit" className="btn btn-primary mt-3">
-              Save Semester
+              {editingId ? "Update Semester" : "Save Semester"}
             </button>
+            {editingId ? (
+              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelEdit}>
+                Cancel Edit
+              </button>
+            ) : null}
           </FormCard>
         </div>
         <div className="col-lg-8 col-12">
@@ -249,18 +318,21 @@ export function SemestersManagementPage() {
                 semester.session?.name || "",
                 semester.status,
                 isCurrent ? <span className="badge badge-success">Current</span> : "No",
-                isCurrent ? (
-                  ""
-                ) : (
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary"
-                    disabled={!canManageCatalog}
-                    onClick={() => chooseCurrent(semester.id)}
-                  >
-                    Set Current
+                <div key={`semester-actions-${semester.id}`} className="cbt-actions">
+                  <button type="button" className="btn btn-sm btn-outline-secondary" disabled={!canManageCatalog} onClick={() => startEdit(semester)}>
+                    Edit
                   </button>
-                ),
+                  {!isCurrent ? (
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary"
+                      disabled={!canManageCatalog}
+                      onClick={() => chooseCurrent(semester.id)}
+                    >
+                      Set Current
+                    </button>
+                  ) : null}
+                </div>,
               ];
             })}
           />
@@ -273,8 +345,10 @@ export function SemestersManagementPage() {
 export function DepartmentsManagementPage() {
   const { user } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [form, setForm] = useState({ name: "", code: "" });
-  const [levelForm, setLevelForm] = useState({ departmentId: "", name: "" });
+  const [form, setForm] = useState({ name: "", code: "", status: "active" });
+  const [levelForm, setLevelForm] = useState({ departmentId: "", name: "", status: "active" });
+  const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(null);
+  const [editingLevelId, setEditingLevelId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
@@ -298,13 +372,22 @@ export function DepartmentsManagementPage() {
     event.preventDefault();
     await runAction(
       async () => {
-        await createDepartment({
-          name: form.name.trim(),
-          code: form.code.trim() || undefined,
-        });
-        setForm({ name: "", code: "" });
+        if (editingDepartmentId) {
+          await updateDepartment(editingDepartmentId, {
+            name: form.name.trim(),
+            code: form.code.trim() || null,
+            status: form.status,
+          });
+        } else {
+          await createDepartment({
+            name: form.name.trim(),
+            code: form.code.trim() || undefined,
+          });
+        }
+        setForm({ name: "", code: "", status: "active" });
+        setEditingDepartmentId(null);
       },
-      "Department created.",
+      editingDepartmentId ? "Department updated." : "Department created.",
       load,
       setFeedback,
     );
@@ -314,24 +397,49 @@ export function DepartmentsManagementPage() {
     event.preventDefault();
     await runAction(
       async () => {
-        await addDepartmentLevel(Number(levelForm.departmentId), { name: levelForm.name.trim() });
-        setLevelForm({ departmentId: levelForm.departmentId, name: "" });
+        if (editingLevelId) {
+          await updateLevel(editingLevelId, {
+            name: levelForm.name.trim(),
+            status: levelForm.status,
+          });
+        } else {
+          await addDepartmentLevel(Number(levelForm.departmentId), { name: levelForm.name.trim() });
+        }
+        setLevelForm({ departmentId: editingLevelId ? "" : levelForm.departmentId, name: "", status: "active" });
+        setEditingLevelId(null);
       },
-      "Level added to department.",
+      editingLevelId ? "Level updated." : "Level added to department.",
       load,
       setFeedback,
     );
   };
 
-  const detachLevel = async (departmentId: number, levelId: number) => {
-    await runAction(
-      async () => {
-        await removeDepartmentLevel(departmentId, levelId);
-      },
-      "Level removed from department.",
-      load,
-      setFeedback,
-    );
+  const startEdit = (department: Department) => {
+    setEditingDepartmentId(department.id);
+    setForm({
+      name: department.name,
+      code: department.code || "",
+      status: department.status,
+    });
+  };
+
+  const cancelEdit = () => {
+    setEditingDepartmentId(null);
+    setForm({ name: "", code: "", status: "active" });
+  };
+
+  const startLevelEdit = (department: Department, level: Level) => {
+    setEditingLevelId(level.id);
+    setLevelForm({
+      departmentId: String(department.id),
+      name: level.name,
+      status: level.status,
+    });
+  };
+
+  const cancelLevelEdit = () => {
+    setEditingLevelId(null);
+    setLevelForm({ departmentId: "", name: "", status: "active" });
   };
 
   return (
@@ -339,7 +447,7 @@ export function DepartmentsManagementPage() {
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
-          <FormCard title="Create Department" onSubmit={submit} disabled={!canManageCatalog}>
+          <FormCard title={editingDepartmentId ? "Edit Department" : "Create Department"} onSubmit={submit} disabled={!canManageCatalog}>
             <label>Department Name</label>
             <input
               className="form-control"
@@ -355,12 +463,26 @@ export function DepartmentsManagementPage() {
               value={form.code}
               onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
             />
+            <label className="mt-3">Status</label>
+            <select
+              className="form-control"
+              value={form.status}
+              onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
             <button type="submit" className="btn btn-primary mt-3">
-              Save Department
+              {editingDepartmentId ? "Update Department" : "Save Department"}
             </button>
+            {editingDepartmentId ? (
+              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelEdit}>
+                Cancel Edit
+              </button>
+            ) : null}
           </FormCard>
 
-          <FormCard title="Add Level to Department" onSubmit={submitLevel} disabled={!canManageCatalog}>
+          <FormCard title={editingLevelId ? "Edit Level" : "Add Level to Department"} onSubmit={submitLevel} disabled={!canManageCatalog}>
             <label>Department</label>
             <select
               className="form-control"
@@ -368,6 +490,7 @@ export function DepartmentsManagementPage() {
               onChange={(event) =>
                 setLevelForm((current) => ({ ...current, departmentId: event.target.value }))
               }
+              disabled={Boolean(editingLevelId)}
               required
             >
               <option value="">Select Department</option>
@@ -385,16 +508,30 @@ export function DepartmentsManagementPage() {
               onChange={(event) => setLevelForm((current) => ({ ...current, name: event.target.value }))}
               required
             />
+            <label className="mt-3">Status</label>
+            <select
+              className="form-control"
+              value={levelForm.status}
+              onChange={(event) => setLevelForm((current) => ({ ...current, status: event.target.value }))}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
             <button type="submit" className="btn btn-primary mt-3">
-              Add Level
+              {editingLevelId ? "Update Level" : "Add Level"}
             </button>
+            {editingLevelId ? (
+              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelLevelEdit}>
+                Cancel Edit
+              </button>
+            ) : null}
           </FormCard>
         </div>
         <div className="col-lg-8 col-12">
           <TableCard
             title="All Departments"
             loading={loading}
-            headers={["Name", "Code", "Levels", "Status"]}
+            headers={["Name", "Code", "Levels", "Status", "Action"]}
             rows={departments.map((department) => [
               department.name,
               department.code || "",
@@ -402,9 +539,18 @@ export function DepartmentsManagementPage() {
                 key="levels"
                 department={department}
                 canManage={canManageCatalog}
-                onRemove={detachLevel}
+                onEdit={startLevelEdit}
               />,
               department.status,
+              <button
+                key={`edit-${department.id}`}
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                disabled={!canManageCatalog}
+                onClick={() => startEdit(department)}
+              >
+                Edit
+              </button>,
             ])}
           />
         </div>
@@ -564,11 +710,11 @@ export function CoursesManagementPage() {
 function LevelChips({
   department,
   canManage,
-  onRemove,
+  onEdit,
 }: {
   department: Department;
   canManage: boolean;
-  onRemove: (departmentId: number, levelId: number) => void;
+  onEdit: (department: Department, level: Level) => void;
 }) {
   const levels = department.levels ?? [];
 
@@ -581,15 +727,9 @@ function LevelChips({
       {levels.map((level) => (
         <span className="department-level-chip" key={level.id}>
           <span>{level.name}</span>
-          {canManage ? (
-            <button
-              type="button"
-              aria-label={`Remove ${level.name} from ${department.name}`}
-              onClick={() => onRemove(department.id, level.id)}
-            >
-              x
-            </button>
-          ) : null}
+          <button type="button" disabled={!canManage} onClick={() => onEdit(department, level)}>
+            Edit
+          </button>
         </span>
       ))}
     </div>

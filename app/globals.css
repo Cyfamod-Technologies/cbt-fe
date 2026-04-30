@@ -1086,6 +1086,84 @@ textarea {
   background: #fff8e5;
 }
 
+.cbt-result-filter,
+.student-filter-grid,
+.bulk-upload-grid,
+.assignment-summary-grid,
+.course-summary-grid,
+.course-context-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  align-items: end;
+}
+
+.cbt-filter-actions {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+
+.student-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.student-profile-grid > div,
+.course-context-grid > div,
+.assignment-summary-card,
+.course-summary-card {
+  border: 1px solid #eeeeee;
+  border-radius: 4px;
+  padding: 13px 14px;
+  background: #ffffff;
+}
+
+.student-profile-grid span,
+.course-context-grid span,
+.assignment-summary-card span,
+.course-summary-card span {
+  display: block;
+  margin-bottom: 5px;
+  color: #707070;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.student-profile-grid strong,
+.course-context-grid strong,
+.assignment-summary-card strong,
+.course-summary-card strong {
+  display: block;
+  min-width: 0;
+  color: #111111;
+  overflow-wrap: anywhere;
+}
+
+.bulk-upload-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
+}
+
+.csv-sample {
+  overflow-x: auto;
+  margin: 0;
+  border: 1px solid #eeeeee;
+  border-radius: 4px;
+  padding: 14px;
+  background: #f8f9fa;
+  color: #183b56;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.course-summary-card strong,
+.assignment-summary-card strong {
+  font-size: 24px;
+}
+
 .mt-3 {
   margin-top: 1rem;
 }
@@ -1111,6 +1189,10 @@ textarea {
 }
 
 @media (max-width: 767px) {
+  .bulk-upload-grid {
+    grid-template-columns: 1fr;
+  }
+
   .cbt-school-option-row {
     grid-template-columns: 1fr;
   }
@@ -1163,16 +1245,20 @@ textarea {
 }
 
 .department-level-chip button {
-  width: 18px;
-  height: 18px;
-  border: 0;
-  border-radius: 50%;
+  border: 1px solid #d7e6f2;
+  border-radius: 4px;
   background: #ffffff;
-  color: #7a1f1f;
+  color: #183b56;
   cursor: pointer;
   line-height: 1;
-  font-size: 12px;
-  font-weight: 800;
+  padding: 4px 7px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.department-level-chip button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 @media (max-width: 991px) {
@@ -1209,10 +1295,53 @@ textarea {
   }
 
   .dashboard-content-one {
-    padding: 22px 16px 34px;
+    padding: 20px 12px 34px;
   }
 
   .login-box {
-    padding: 34px 24px;
+    padding: 28px 18px;
+  }
+
+  .login-page-wrap {
+    align-items: flex-start;
+    padding: 18px 12px;
+  }
+
+  .school-logo-mark {
+    min-width: 0;
+    width: 100%;
+    font-size: 20px;
+  }
+
+  .sign-up-cta,
+  .register-login-cta {
+    border-radius: 4px;
+    flex-direction: column;
+    align-items: flex-start !important;
+    padding: 16px !important;
+  }
+
+  .cta-action,
+  .register-login-action {
+    width: 100%;
+    border-radius: 4px !important;
+  }
+
+  .heading-layout1 {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .navbar-right,
+  .user-account,
+  .cbt-attempt-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 8px;
+    font-size: 13px;
   }
 }
