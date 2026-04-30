@@ -413,9 +413,9 @@ export function StudentsPage() {
 
       <div className="card height-auto mb-4">
         <div className="card-body">
-          <div className="heading-layout1 mb-0">
+          <div className="heading-layout1 mb-3">
             <div className="item-title">
-              <h3>Student Actions</h3>
+              <h3>Students</h3>
             </div>
             <div className="d-flex flex-wrap gap-2">
               <button
@@ -426,19 +426,13 @@ export function StudentsPage() {
               >
                 Add Student
               </button>
-              <button type="button" className="btn btn-lg btn-warning" disabled>
-                Overrides
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card height-auto mb-4">
-        <div className="card-body">
-          <div className="heading-layout1">
-            <div className="item-title">
-              <h3>Search & Filter</h3>
+              <a
+                href="/templates/student-bulk-upload-template.csv"
+                download
+                className="btn btn-lg btn-outline-secondary"
+              >
+                Download Template
+              </a>
             </div>
           </div>
           <div className="student-filter-grid">
@@ -564,32 +558,92 @@ export function StudentsPage() {
           <div className="card-body">
             <div className="heading-layout1">
               <div className="item-title">
-                <h3>Student Profile</h3>
+                <h3>About {viewStudent.name}</h3>
               </div>
-              <div className="cbt-actions">
-                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={!canManageUsers} onClick={() => startEdit(viewStudent)}>
-                  Edit
+              <div className="dropdown">
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary dropdown-toggle"
+                  data-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  ...
                 </button>
-                <button type="button" className="btn btn-sm btn-danger" disabled={!canManageUsers} onClick={() => toggleStatus(viewStudent)}>
-                  {viewStudent.status === "active" ? "Deactivate" : "Activate"}
-                </button>
-                <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setViewStudent(null)}>
-                  Close
-                </button>
+                <div className="dropdown-menu dropdown-menu-right">
+                  <button
+                    type="button"
+                    className="dropdown-item"
+                    disabled={!canManageUsers}
+                    onClick={() => startEdit(viewStudent)}
+                  >
+                    <i className="fas fa-cogs"></i> Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="dropdown-item"
+                    disabled={!canManageUsers}
+                    onClick={() => toggleStatus(viewStudent)}
+                  >
+                    <i className="fas fa-ban"></i> {viewStudent.status === "active" ? "Deactivate" : "Activate"}
+                  </button>
+                  <div className="dropdown-divider"></div>
+                  <button type="button" className="dropdown-item" onClick={() => setViewStudent(null)}>
+                    <i className="fas fa-times"></i> Close
+                  </button>
+                </div>
               </div>
             </div>
-            <div className="student-profile-grid">
-              <div><span>Full Name</span><strong>{viewStudent.name}</strong></div>
-              <div><span>Matric No</span><strong>{viewStudent.matric_no || "-"}</strong></div>
-              <div><span>Student ID</span><strong>{viewStudent.student_id_no || "-"}</strong></div>
-              <div><span>Department</span><strong>{viewStudent.department?.name || "-"}</strong></div>
-              <div><span>Level</span><strong>{viewStudent.level?.name || "-"}</strong></div>
-              <div><span>Phone</span><strong>{viewStudent.phone || "-"}</strong></div>
-              <div><span>Email</span><strong>{viewStudent.email || "-"}</strong></div>
-              <div><span>Status</span><strong>{viewStudent.status}</strong></div>
+            <div className="single-info-details">
+              <div className="item-img">
+                <img
+                  src="/assets/img/figure/student.png"
+                  alt="student"
+                  style={{ width: "150px", height: "auto", borderRadius: "4px" }}
+                />
+              </div>
+              <div className="item-content">
+                <div className="info-table table-responsive">
+                  <table className="table text-nowrap">
+                    <tbody>
+                      <tr>
+                        <td>Full Name:</td>
+                        <td className="font-medium text-dark-medium">{viewStudent.name}</td>
+                      </tr>
+                      <tr>
+                        <td>Matric No:</td>
+                        <td className="font-medium text-dark-medium">{viewStudent.matric_no || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td>Student ID:</td>
+                        <td className="font-medium text-dark-medium">{viewStudent.student_id_no || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td>Department:</td>
+                        <td className="font-medium text-dark-medium">{viewStudent.department?.name || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td>Level:</td>
+                        <td className="font-medium text-dark-medium">{viewStudent.level?.name || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td>Phone:</td>
+                        <td className="font-medium text-dark-medium">{viewStudent.phone || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td>Email:</td>
+                        <td className="font-medium text-dark-medium">{viewStudent.email || "-"}</td>
+                      </tr>
+                      <tr>
+                        <td>Status:</td>
+                        <td className="font-medium text-dark-medium">{viewStudent.status}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
 
-            <div className="heading-layout1 mt-3">
+            <div className="heading-layout1 mt-4">
               <div className="item-title">
                 <h3>Quiz History</h3>
               </div>
@@ -630,35 +684,71 @@ export function StudentsPage() {
         </div>
       ) : null}
 
-      <TableCard
-        title="Student List"
-        loading={loading}
-        headers={["Matric No", "Student ID No", "Full Name", "Phone", "Status", "Action"]}
-        rows={filteredStudents.map((student) => [
-          student.matric_no || "-",
-          student.student_id_no || "-",
-          student.name,
-          student.phone || "-",
-          student.status,
-          <div key={`student-actions-${student.id}`} className="d-flex gap-2">
-            <button
-              type="button"
-              className="btn btn-warning btn-sm"
-              onClick={() => showStudent(student)}
-            >
-              View
-            </button>
-            <button
-              type="button"
-              className="btn btn-warning btn-sm"
-              disabled={!canManageUsers}
-              onClick={() => startEdit(student)}
-            >
-              Edit
-            </button>
-          </div>,
-        ])}
-      />
+      <div className="card height-auto">
+        <div className="card-body">
+          <div className="heading-layout1">
+            <div className="item-title">
+              <h3>All Students</h3>
+            </div>
+          </div>
+          {loading ? (
+            <div className="text-muted">Loading...</div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Matric No</th>
+                    <th>Student ID No</th>
+                    <th>Full Name</th>
+                    <th>Phone</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStudents.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="text-muted">
+                        No records found.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredStudents.map((student) => (
+                      <tr key={student.id}>
+                        <td>{student.matric_no || "-"}</td>
+                        <td>{student.student_id_no || "-"}</td>
+                        <td>{student.name}</td>
+                        <td>{student.phone || "-"}</td>
+                        <td>{student.status}</td>
+                        <td>
+                          <div className="d-flex gap-2">
+                            <button
+                              type="button"
+                              className="btn btn-warning btn-sm"
+                              onClick={() => showStudent(student)}
+                            >
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-warning btn-sm"
+                              disabled={!canManageUsers}
+                              onClick={() => startEdit(student)}
+                            >
+                              Edit
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </>
   );
 }

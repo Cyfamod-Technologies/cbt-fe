@@ -349,6 +349,7 @@ export function DepartmentsManagementPage() {
   const [levelForm, setLevelForm] = useState({ departmentId: "", name: "", status: "active" });
   const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(null);
   const [editingLevelId, setEditingLevelId] = useState<number | null>(null);
+  const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
@@ -421,11 +422,20 @@ export function DepartmentsManagementPage() {
       code: department.code || "",
       status: department.status,
     });
+    setLevelForm({
+      departmentId: String(department.id),
+      name: "",
+      status: "active",
+    });
+    setEditMode(true);
   };
 
   const cancelEdit = () => {
     setEditingDepartmentId(null);
+    setEditingLevelId(null);
     setForm({ name: "", code: "", status: "active" });
+    setLevelForm({ departmentId: "", name: "", status: "active" });
+    setEditMode(false);
   };
 
   const startLevelEdit = (department: Department, level: Level) => {
@@ -439,95 +449,134 @@ export function DepartmentsManagementPage() {
 
   const cancelLevelEdit = () => {
     setEditingLevelId(null);
-    setLevelForm({ departmentId: "", name: "", status: "active" });
+    setLevelForm({ departmentId: editingDepartmentId ? String(editingDepartmentId) : "", name: "", status: "active" });
   };
 
   return (
     <ManagementShell title="Departments" current="Departments">
       <FeedbackAlert feedback={feedback} />
       <div className="row">
-        <div className="col-lg-4 col-12">
-          <FormCard title={editingDepartmentId ? "Edit Department" : "Create Department"} onSubmit={submit} disabled={!canManageCatalog}>
-            <label>Department Name</label>
-            <input
-              className="form-control"
-              placeholder="Computer Science"
-              value={form.name}
-              onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-              required
-            />
-            <label className="mt-3">Department Code</label>
-            <input
-              className="form-control"
-              placeholder="CSC"
-              value={form.code}
-              onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
-            />
-            <label className="mt-3">Status</label>
-            <select
-              className="form-control"
-              value={form.status}
-              onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            <button type="submit" className="btn btn-primary mt-3">
-              {editingDepartmentId ? "Update Department" : "Save Department"}
-            </button>
-            {editingDepartmentId ? (
-              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelEdit}>
-                Cancel Edit
+        {editMode ? (
+          <div className="col-12">
+            <div className="card height-auto mb-4">
+              <div className="card-body">
+                <div className="heading-layout1">
+                  <div className="item-title">
+                    <h3>Edit Department & Levels</h3>
+                  </div>
+                  <button type="button" className="btn btn-sm btn-outline-secondary" onClick={cancelEdit}>
+                    Close
+                  </button>
+                </div>
+                <div className="row">
+                  <div className="col-lg-6 col-12">
+                    <form className="new-added-form" onSubmit={submit}>
+                      <fieldset disabled={!canManageCatalog}>
+                        <h4 className="mb-3">Department Details</h4>
+                        <label>Department Name</label>
+                        <input
+                          className="form-control"
+                          placeholder="Computer Science"
+                          value={form.name}
+                          onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                          required
+                        />
+                        <label className="mt-3">Department Code</label>
+                        <input
+                          className="form-control"
+                          placeholder="CSC"
+                          value={form.code}
+                          onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
+                        />
+                        <label className="mt-3">Status</label>
+                        <select
+                          className="form-control"
+                          value={form.status}
+                          onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
+                        >
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                        <button type="submit" className="btn btn-primary mt-3">
+                          Update Department
+                        </button>
+                      </fieldset>
+                    </form>
+                  </div>
+                  <div className="col-lg-6 col-12">
+                    <form className="new-added-form" onSubmit={submitLevel}>
+                      <fieldset disabled={!canManageCatalog}>
+                        <h4 className="mb-3">{editingLevelId ? "Edit Level" : "Add New Level"}</h4>
+                        <label className="mt-3">Level Name</label>
+                        <input
+                          className="form-control"
+                          placeholder="ND I"
+                          value={levelForm.name}
+                          onChange={(event) => setLevelForm((current) => ({ ...current, name: event.target.value }))}
+                          required
+                        />
+                        <label className="mt-3">Status</label>
+                        <select
+                          className="form-control"
+                          value={levelForm.status}
+                          onChange={(event) => setLevelForm((current) => ({ ...current, status: event.target.value }))}
+                        >
+                          <option value="active">Active</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                        <button type="submit" className="btn btn-primary mt-3">
+                          {editingLevelId ? "Update Level" : "Add Level"}
+                        </button>
+                        {editingLevelId ? (
+                          <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelLevelEdit}>
+                            Cancel
+                          </button>
+                        ) : null}
+                      </fieldset>
+                    </form>
+                    <div className="mt-4">
+                      <h5>Current Levels</h5>
+                      <div className="department-level-list mt-2">
+                        {departments.find((d) => d.id === editingDepartmentId)?.levels?.map((level) => (
+                          <span className="department-level-chip" key={level.id}>
+                            <span>{level.name}</span>
+                            <button type="button" disabled={!canManageCatalog} onClick={() => startLevelEdit(departments.find((d) => d.id === editingDepartmentId)!, level)}>
+                              Edit
+                            </button>
+                          </span>
+                        )) || <span className="text-muted">No levels</span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="col-lg-4 col-12">
+            <FormCard title="Create Department" onSubmit={submit} disabled={!canManageCatalog}>
+              <label>Department Name</label>
+              <input
+                className="form-control"
+                placeholder="Computer Science"
+                value={form.name}
+                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                required
+              />
+              <label className="mt-3">Department Code</label>
+              <input
+                className="form-control"
+                placeholder="CSC"
+                value={form.code}
+                onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
+              />
+              <button type="submit" className="btn btn-primary mt-3">
+                Save Department
               </button>
-            ) : null}
-          </FormCard>
-
-          <FormCard title={editingLevelId ? "Edit Level" : "Add Level to Department"} onSubmit={submitLevel} disabled={!canManageCatalog}>
-            <label>Department</label>
-            <select
-              className="form-control"
-              value={levelForm.departmentId}
-              onChange={(event) =>
-                setLevelForm((current) => ({ ...current, departmentId: event.target.value }))
-              }
-              disabled={Boolean(editingLevelId)}
-              required
-            >
-              <option value="">Select Department</option>
-              {departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
-            </select>
-            <label className="mt-3">Level Name</label>
-            <input
-              className="form-control"
-              placeholder="ND I"
-              value={levelForm.name}
-              onChange={(event) => setLevelForm((current) => ({ ...current, name: event.target.value }))}
-              required
-            />
-            <label className="mt-3">Status</label>
-            <select
-              className="form-control"
-              value={levelForm.status}
-              onChange={(event) => setLevelForm((current) => ({ ...current, status: event.target.value }))}
-            >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-            <button type="submit" className="btn btn-primary mt-3">
-              {editingLevelId ? "Update Level" : "Add Level"}
-            </button>
-            {editingLevelId ? (
-              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelLevelEdit}>
-                Cancel Edit
-              </button>
-            ) : null}
-          </FormCard>
-        </div>
-        <div className="col-lg-8 col-12">
+            </FormCard>
+          </div>
+        )}
+        <div className={editMode ? "col-12" : "col-lg-8 col-12"}>
           <TableCard
             title="All Departments"
             loading={loading}
@@ -538,7 +587,7 @@ export function DepartmentsManagementPage() {
               <LevelChips
                 key="levels"
                 department={department}
-                canManage={canManageCatalog}
+                canManage={false}
                 onEdit={startLevelEdit}
               />,
               department.status,

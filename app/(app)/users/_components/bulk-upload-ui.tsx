@@ -38,6 +38,7 @@ export function BulkUploadPage({ kind }: { kind: ImportKind }) {
         parentLabel: "Students",
         columns: studentColumns,
         sample: "matric_no,student_id_no,full_name,department,level,email,phone,status\nCYF/CSC/002,STU002,Ada Johnson,Computer Science,ND I,ada@example.com,08030000002,active",
+        templateUrl: "/templates/student-bulk-upload-template.csv",
       }
     : {
         title: "Staff Bulk Upload",
@@ -45,6 +46,7 @@ export function BulkUploadPage({ kind }: { kind: ImportKind }) {
         parentLabel: "Staff",
         columns: staffColumns,
         sample: "staff_id,full_name,email,phone,status\nSTF-002,Grace Musa,grace@example.com,08030000003,active",
+        templateUrl: "/templates/staff-bulk-upload-template.csv",
       };
 
   const previewRows = useMemo(() => rows.slice(0, 8), [rows]);
@@ -181,6 +183,13 @@ export function BulkUploadPage({ kind }: { kind: ImportKind }) {
               <div className="item-title">
                 <h3>Upload CSV</h3>
               </div>
+              <a
+                href={config.templateUrl}
+                download
+                className="btn btn-sm btn-outline-secondary"
+              >
+                Download Template
+              </a>
             </div>
             <label htmlFor={`${kind}-csv`}>CSV File</label>
             <input id={`${kind}-csv`} className="form-control" type="file" accept=".csv,text/csv" onChange={handleFile} />

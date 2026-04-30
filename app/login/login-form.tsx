@@ -172,7 +172,7 @@ export function LoginForm() {
           {submitting ? "Signing in..." : "Login"}
         </button>
       </div>
-
+{/* 
       <div className="demo-login-panel">
         <label className="text-muted small" style={{ marginBottom: 8 }}>
           Demo logins
@@ -192,7 +192,7 @@ export function LoginForm() {
         <p className="text-muted small" style={{ margin: "10px 0 0" }}>
           Password for all demo accounts is <strong>password</strong>.
         </p>
-      </div>
+      </div> */}
     </form>
   );
 }

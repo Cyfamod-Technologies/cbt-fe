@@ -21,9 +21,9 @@ const managementLinks = [
   { label: "Courses", href: "/management/courses" },
 ] as const;
 
-const userLinks = [
-  { label: "Staff", href: "/users/staff" },
-  { label: "Staff Bulk Upload", href: "/users/staff/bulk-upload" },
+const staffLinks = [
+  { label: "View Staff", href: "/users/staff" },
+  { label: "Bulk Upload", href: "/users/staff/bulk-upload" },
 ] as const;
 
 const studentLinks = [
@@ -51,22 +51,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/dashboard";
   const isRouteActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
   const managementActive = managementLinks.some((item) => isRouteActive(item.href));
-  const usersActive = [...userLinks, ...studentLinks].some((item) => isRouteActive(item.href));
+  const staffActive = staffLinks.some((item) => isRouteActive(item.href));
   const studentsActive = studentLinks.some((item) => isRouteActive(item.href));
   const assignActive = assignLinks.some((item) => isRouteActive(item.href));
   const cbtActive = cbtLinks.some((item) => isRouteActive(item.href));
   const [managementOpen, setManagementOpen] = useState(false);
   const [managementCollapsed, setManagementCollapsed] = useState(false);
-  const [usersOpen, setUsersOpen] = useState(false);
-  const [usersCollapsed, setUsersCollapsed] = useState(false);
+  const [staffOpen, setStaffOpen] = useState(false);
+  const [staffCollapsed, setStaffCollapsed] = useState(false);
   const [studentsOpen, setStudentsOpen] = useState(false);
   const [studentsCollapsed, setStudentsCollapsed] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [assignCollapsed, setAssignCollapsed] = useState(false);
   const [cbtOpen, setCbtOpen] = useState(false);
   const [cbtCollapsed, setCbtCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const showManagement = managementOpen || (managementActive && !managementCollapsed);
-  const showUsers = usersOpen || (usersActive && !usersCollapsed);
+  const showStaff = staffOpen || (staffActive && !staffCollapsed);
   const showStudents = studentsOpen || (studentsActive && !studentsCollapsed);
   const showAssign = assignOpen || (assignActive && !assignCollapsed);
   const showCbt = cbtOpen || (cbtActive && !cbtCollapsed);
@@ -84,14 +85,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setManagementOpen(false);
     setManagementCollapsed(false);
-    setUsersOpen(false);
-    setUsersCollapsed(false);
+    setStaffOpen(false);
+    setStaffCollapsed(false);
     setStudentsOpen(false);
     setStudentsCollapsed(false);
     setAssignOpen(false);
     setAssignCollapsed(false);
     setCbtOpen(false);
     setCbtCollapsed(false);
+    setSidebarOpen(false);
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -102,22 +104,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const closeSidebarGroups = () => {
     setManagementOpen(false);
     setManagementCollapsed(false);
-    setUsersOpen(false);
-    setUsersCollapsed(false);
+    setStaffOpen(false);
+    setStaffCollapsed(false);
     setStudentsOpen(false);
     setStudentsCollapsed(false);
     setAssignOpen(false);
     setAssignCollapsed(false);
     setCbtOpen(false);
     setCbtCollapsed(false);
+    setSidebarOpen(false);
+  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
   };
 
   const toggleManagement = () => {
     const currentlyVisible = managementOpen || (managementActive && !managementCollapsed);
     setManagementOpen(!currentlyVisible);
     setManagementCollapsed(currentlyVisible);
-    setUsersOpen(false);
-    setUsersCollapsed(false);
+    setStaffOpen(false);
+    setStaffCollapsed(false);
     setStudentsOpen(false);
     setStudentsCollapsed(false);
     setAssignOpen(false);
@@ -126,12 +133,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setCbtCollapsed(false);
   };
 
-  const toggleUsers = () => {
-    const currentlyVisible = usersOpen || (usersActive && !usersCollapsed);
-    setUsersOpen(!currentlyVisible);
-    setUsersCollapsed(currentlyVisible);
+  const toggleStaff = () => {
+    const currentlyVisible = staffOpen || (staffActive && !staffCollapsed);
+    setStaffOpen(!currentlyVisible);
+    setStaffCollapsed(currentlyVisible);
     setManagementOpen(false);
     setManagementCollapsed(false);
+    setStudentsOpen(false);
+    setStudentsCollapsed(false);
     setAssignOpen(false);
     setAssignCollapsed(false);
     setCbtOpen(false);
@@ -142,8 +151,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const currentlyVisible = studentsOpen || (studentsActive && !studentsCollapsed);
     setStudentsOpen(!currentlyVisible);
     setStudentsCollapsed(currentlyVisible);
+    setManagementOpen(false);
+    setManagementCollapsed(false);
+    setStaffOpen(false);
+    setStaffCollapsed(false);
     setAssignOpen(false);
     setAssignCollapsed(false);
+    setCbtOpen(false);
+    setCbtCollapsed(false);
   };
 
   const toggleAssign = () => {
@@ -152,8 +167,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setAssignCollapsed(currentlyVisible);
     setManagementOpen(false);
     setManagementCollapsed(false);
-    setUsersOpen(false);
-    setUsersCollapsed(false);
+    setStaffOpen(false);
+    setStaffCollapsed(false);
     setStudentsOpen(false);
     setStudentsCollapsed(false);
     setCbtOpen(false);
@@ -166,8 +181,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setCbtCollapsed(currentlyVisible);
     setManagementOpen(false);
     setManagementCollapsed(false);
-    setUsersOpen(false);
-    setUsersCollapsed(false);
+    setStaffOpen(false);
+    setStaffCollapsed(false);
     setStudentsOpen(false);
     setStudentsCollapsed(false);
     setAssignOpen(false);
@@ -195,7 +210,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Link href="/dashboard">Cyfamod CBT</Link>
           </div>
           <div className="toggle-button sidebar-toggle">
-            <button type="button" className="item-link" aria-label="Toggle sidebar">
+            <button type="button" className="item-link" aria-label="Toggle sidebar" onClick={toggleSidebar}>
               <span className="btn-icon-wrap">
                 <span />
                 <span />
@@ -238,7 +253,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="dashboard-page-one">
-        <aside className="sidebar-main sidebar-menu-one sidebar-expand-md sidebar-color">
+        <aside className={`sidebar-main sidebar-menu-one sidebar-expand-md sidebar-color ${sidebarOpen ? 'sidebar-open' : ''}`}>
           <div className="sidebar-menu-content">
             <ul className="nav nav-sidebar-menu sidebar-toggle-view cbt-sidebar-menu">
               <li className="sidebar-section-label">CBT Workspace</li>
@@ -275,16 +290,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   })}
                 </ul>
               </li>
-              <li className={`nav-item sidebar-nav-item ${usersActive ? "active" : ""}`}>
+              <li className={`nav-item sidebar-nav-item ${staffActive ? "active" : ""}`}>
                 <button
                   type="button"
-                  className={`nav-link sidebar-nav-button ${usersActive ? "menu-active" : ""}`}
-                  onClick={toggleUsers}
+                  className={`nav-link sidebar-nav-button ${staffActive ? "menu-active" : ""}`}
+                  onClick={toggleStaff}
                 >
-                  <span>Users</span>
+                  <span>Staff</span>
                 </button>
-                <ul className={`sub-group-menu ${showUsers ? "sub-group-active" : ""}`}>
-                  {userLinks.map((item) => {
+                <ul className={`sub-group-menu ${showStaff ? "sub-group-active" : ""}`}>
+                  {staffLinks.map((item) => {
                     const active = isRouteActive(item.href);
 
                     return (
@@ -295,28 +310,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       </li>
                     );
                   })}
-                  <li className={`nav-item sidebar-nav-item ${studentsActive ? "active" : ""}`}>
-                    <button
-                      type="button"
-                      className={`nav-link sidebar-nav-button ${studentsActive ? "menu-active" : ""}`}
-                      onClick={toggleStudents}
-                    >
-                      <span>Students</span>
-                    </button>
-                    <ul className={`sub-group-menu ${showStudents ? "sub-group-active" : ""}`}>
-                      {studentLinks.map((item) => {
-                        const active = item.href === "/users/students" ? pathname === item.href : isRouteActive(item.href);
+                </ul>
+              </li>
+              <li className={`nav-item sidebar-nav-item ${studentsActive ? "active" : ""}`}>
+                <button
+                  type="button"
+                  className={`nav-link sidebar-nav-button ${studentsActive ? "menu-active" : ""}`}
+                  onClick={toggleStudents}
+                >
+                  <span>Students</span>
+                </button>
+                <ul className={`sub-group-menu ${showStudents ? "sub-group-active" : ""}`}>
+                  {studentLinks.map((item) => {
+                    const active = item.href === "/users/students" ? pathname === item.href : isRouteActive(item.href);
 
-                        return (
-                          <li className="nav-item" key={item.href}>
-                            <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
-                              <span>{item.label}</span>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </li>
+                    return (
+                      <li className="nav-item" key={item.href}>
+                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
+                          <span>{item.label}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               </li>
               <li className={`nav-item sidebar-nav-item ${assignActive ? "active" : ""}`}>
@@ -376,6 +391,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </ul>
           </div>
         </aside>
+        {sidebarOpen && <div className="sidebar-overlay" onClick={toggleSidebar}></div>}
         <main className="dashboard-content-one">{children}</main>
       </div>
     </div>
