@@ -155,6 +155,10 @@ export async function setCurrentSession(id: number) {
   })).data;
 }
 
+export async function deleteSession(id: number) {
+  await apiFetch(`/api/v1/sessions/${id}`, { method: "DELETE" });
+}
+
 export async function listSemesters() {
   return (await apiFetch<CollectionResponse<Semester>>("/api/v1/semesters")).data;
 }
@@ -177,6 +181,10 @@ export async function setCurrentSemester(id: number) {
   return (await apiFetch<ItemResponse<Semester>>(`/api/v1/semesters/${id}/current`, {
     method: "PATCH",
   })).data;
+}
+
+export async function deleteSemester(id: number) {
+  await apiFetch(`/api/v1/semesters/${id}`, { method: "DELETE" });
 }
 
 export async function listDepartments() {
@@ -210,6 +218,10 @@ export async function removeDepartmentLevel(departmentId: number, levelId: numbe
   })).data;
 }
 
+export async function deleteDepartment(id: number) {
+  await apiFetch(`/api/v1/departments/${id}`, { method: "DELETE" });
+}
+
 export async function listLevels() {
   return (await apiFetch<CollectionResponse<Level>>("/api/v1/levels")).data;
 }
@@ -226,6 +238,10 @@ export async function updateLevel(id: number, payload: { name?: string; status?:
     method: "PUT",
     body: JSON.stringify(payload),
   })).data;
+}
+
+export async function deleteLevel(id: number) {
+  await apiFetch(`/api/v1/levels/${id}`, { method: "DELETE" });
 }
 
 export async function listCourses() {
@@ -259,6 +275,10 @@ export async function updateCourse(
     method: "PUT",
     body: JSON.stringify(payload),
   })).data;
+}
+
+export async function deleteCourse(id: number) {
+  await apiFetch(`/api/v1/courses/${id}`, { method: "DELETE" });
 }
 
 export async function getSchoolSettings() {
@@ -341,6 +361,10 @@ export async function deactivateStaff(id: number) {
   return (await apiFetch<ItemResponse<Staff>>(`/api/v1/staff/${id}/deactivate`, { method: "PATCH" })).data;
 }
 
+export async function deleteStaff(id: number) {
+  await apiFetch(`/api/v1/staff/${id}`, { method: "DELETE" });
+}
+
 export async function updateUser(
   id: number,
   payload: Partial<{
@@ -369,6 +393,10 @@ export async function activateUser(id: number) {
 
 export async function deactivateUser(id: number) {
   return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/users/${id}/deactivate`, { method: "PATCH" })).data;
+}
+
+export async function deleteUser(id: number) {
+  await apiFetch(`/api/v1/users/${id}`, { method: "DELETE" });
 }
 
 export async function listStaffCourseAssignments(staffId?: number) {

@@ -9,6 +9,11 @@ import {
   createLevel,
   createSemester,
   createSession,
+  deleteCourse,
+  deleteDepartment,
+  deleteLevel,
+  deleteSemester,
+  deleteSession,
   getSchoolSettings,
   listCourses,
   listDepartments,
@@ -113,6 +118,11 @@ export function SessionsManagementPage() {
     );
   };
 
+  const handleDelete = async (session: AcademicSession) => {
+    if (!confirm(`Delete session "${session.name}"? This cannot be undone.`)) return;
+    await runAction(async () => deleteSession(session.id), "Session deleted.", load, setFeedback);
+  };
+
   const startEdit = (session: AcademicSession) => {
     setEditingId(session.id);
     setName(session.name);
@@ -177,6 +187,14 @@ export function SessionsManagementPage() {
                     Set Current
                   </button>
                 ) : null}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-danger"
+                  disabled={!canManageCatalog}
+                  onClick={() => void handleDelete(session)}
+                >
+                  Delete
+                </button>
               </div>,
             ])}
           />
@@ -250,6 +268,11 @@ export function SemestersManagementPage() {
       load,
       setFeedback,
     );
+  };
+
+  const handleDelete = async (semester: Semester) => {
+    if (!confirm(`Delete semester "${semester.name}"? This cannot be undone.`)) return;
+    await runAction(async () => deleteSemester(semester.id), "Semester deleted.", load, setFeedback);
   };
 
   const startEdit = (semester: Semester) => {
@@ -335,6 +358,14 @@ export function SemestersManagementPage() {
                       Set Current
                     </button>
                   ) : null}
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-danger"
+                    disabled={!canManageCatalog}
+                    onClick={() => void handleDelete(semester)}
+                  >
+                    Delete
+                  </button>
                 </div>,
               ];
             })}
@@ -439,6 +470,11 @@ export function DepartmentsManagementPage() {
       load,
       setFeedback,
     );
+  };
+
+  const handleDeleteDept = async (department: Department) => {
+    if (!confirm(`Delete department "${department.name}"? This cannot be undone.`)) return;
+    await runAction(async () => deleteDepartment(department.id), "Department deleted.", load, setFeedback);
   };
 
   const startEdit = (department: Department) => {
@@ -595,15 +631,14 @@ export function DepartmentsManagementPage() {
               department.code || "",
               <LevelChips key="levels" department={department} />,
               department.status,
-              <button
-                key={`edit-${department.id}`}
-                type="button"
-                className="btn btn-sm btn-outline-secondary"
-                disabled={!canManageCatalog}
-                onClick={() => startEdit(department)}
-              >
-                Edit
-              </button>,
+              <div key={`dept-actions-${department.id}`} className="cbt-actions">
+                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={!canManageCatalog} onClick={() => startEdit(department)}>
+                  Edit
+                </button>
+                <button type="button" className="btn btn-sm btn-outline-danger" disabled={!canManageCatalog} onClick={() => void handleDeleteDept(department)}>
+                  Delete
+                </button>
+              </div>,
             ])}
           />
         </div>
@@ -658,6 +693,11 @@ export function CoursesManagementPage() {
       load,
       setFeedback,
     );
+  };
+
+  const handleDelete = async (course: Course) => {
+    if (!confirm(`Delete course "${course.code} - ${course.title}"? This cannot be undone.`)) return;
+    await runAction(async () => deleteCourse(course.id), "Course deleted.", load, setFeedback);
   };
 
   const startEdit = (course: Course) => {
@@ -716,15 +756,14 @@ export function CoursesManagementPage() {
               course.title,
               course.department?.name || "",
               course.status,
-              <button
-                key={`edit-${course.id}`}
-                type="button"
-                className="btn btn-sm btn-outline-secondary"
-                disabled={!canManageCatalog}
-                onClick={() => startEdit(course)}
-              >
-                Edit
-              </button>,
+              <div key={`course-actions-${course.id}`} className="cbt-actions">
+                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={!canManageCatalog} onClick={() => startEdit(course)}>
+                  Edit
+                </button>
+                <button type="button" className="btn btn-sm btn-outline-danger" disabled={!canManageCatalog} onClick={() => void handleDelete(course)}>
+                  Delete
+                </button>
+              </div>,
             ])}
           />
         </div>
@@ -771,6 +810,11 @@ export function LevelsManagementPage() {
       load,
       setFeedback,
     );
+  };
+
+  const handleDelete = async (level: Level) => {
+    if (!confirm(`Delete level "${level.name}"? This cannot be undone.`)) return;
+    await runAction(async () => deleteLevel(level.id), "Level deleted.", load, setFeedback);
   };
 
   const startEdit = (level: Level) => {
@@ -820,15 +864,14 @@ export function LevelsManagementPage() {
             rows={levels.map((level) => [
               level.name,
               level.status,
-              <button
-                key={`edit-${level.id}`}
-                type="button"
-                className="btn btn-sm btn-outline-secondary"
-                disabled={!canManageCatalog}
-                onClick={() => startEdit(level)}
-              >
-                Edit
-              </button>,
+              <div key={`level-actions-${level.id}`} className="cbt-actions">
+                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={!canManageCatalog} onClick={() => startEdit(level)}>
+                  Edit
+                </button>
+                <button type="button" className="btn btn-sm btn-outline-danger" disabled={!canManageCatalog} onClick={() => void handleDelete(level)}>
+                  Delete
+                </button>
+              </div>,
             ])}
           />
         </div>

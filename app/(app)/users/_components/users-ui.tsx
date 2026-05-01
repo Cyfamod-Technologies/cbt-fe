@@ -6,6 +6,7 @@ import {
   activateUser,
   createUser,
   deactivateUser,
+  deleteUser,
   listDepartments,
   listLevels,
   listUsers,
@@ -91,6 +92,11 @@ export function UsersPage({ role, title }: { role: Role; title: string }) {
     );
   };
 
+  const handleDelete = async (targetUser: SchoolUser) => {
+    if (!confirm(`Delete ${title.toLowerCase()} "${targetUser.name}"? This cannot be undone.`)) return;
+    await runAction(async () => deleteUser(targetUser.id), `${title} deleted.`, load, setFeedback);
+  };
+
   const cancelEdit = () => {
     setEditingUserId(null);
     setForm({ name: "", email: "", password: "", status: "active" });
@@ -170,7 +176,7 @@ export function UsersPage({ role, title }: { role: Role; title: string }) {
               user.email,
               user.status,
               user.last_login_at || "-",
-              <div key={`actions-${user.id}`} className="d-flex gap-2">
+              <div key={`actions-${user.id}`} className="cbt-actions">
                 <button
                   type="button"
                   className="btn btn-sm btn-outline-secondary"
@@ -186,6 +192,14 @@ export function UsersPage({ role, title }: { role: Role; title: string }) {
                   disabled={!canManageUsers}
                 >
                   {user.status === "active" ? "Deactivate" : "Activate"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-danger"
+                  onClick={() => void handleDelete(user)}
+                  disabled={!canManageUsers}
+                >
+                  Delete
                 </button>
               </div>,
             ])}
@@ -225,6 +239,11 @@ export function StudentsPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  const handleDelete = async (student: SchoolUser) => {
+    if (!confirm(`Delete student "${student.name}"? This cannot be undone.`)) return;
+    await runAction(async () => deleteUser(student.id), "Student deleted.", load, setFeedback);
+  };
 
   const filteredStudents = students.filter((student) => {
     const search = filters.search.trim().toLowerCase();
@@ -333,14 +352,23 @@ export function StudentsPage() {
                           </span>
                         </td>
                         <td>
-                          <div className="d-flex gap-2">
-                            <Link href={`/users/students/${student.id}`} className="btn btn-warning">
+                          <div className="cbt-actions">
+                            <Link href={`/users/students/${student.id}`} className="btn btn-sm btn-warning">
                               View
                             </Link>
                             {canManageUsers && (
-                              <Link href={`/users/students/${student.id}/edit`} className="btn btn-secondary">
+                              <Link href={`/users/students/${student.id}/edit`} className="btn btn-sm btn-secondary">
                                 Edit
                               </Link>
+                            )}
+                            {canManageUsers && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => void handleDelete(student)}
+                              >
+                                Delete
+                              </button>
                             )}
                           </div>
                         </td>

@@ -7,6 +7,7 @@ import {
   activateStaff,
   createStaff,
   deactivateStaff,
+  deleteStaff,
   getStaff,
   listStaff,
   updateStaff,
@@ -72,6 +73,16 @@ export function StaffListPage() {
       return haystack.includes(query);
     });
   }, [search, staff]);
+
+  const handleDelete = async (item: Staff) => {
+    if (!window.confirm(`Delete staff profile for "${item.full_name}"? This cannot be undone.`)) return;
+    try {
+      await deleteStaff(item.id);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to delete staff profile.");
+    }
+  };
 
   const toggleStatus = async (item: Staff) => {
     const nextAction = item.status === "active" ? "deactivate" : "activate";
@@ -186,13 +197,18 @@ export function StaffListPage() {
                       <td>{item.department?.name ?? "N/A"}</td>
                       <td className="text-capitalize">{item.status}</td>
                       <td>
-                        <div className="d-flex gap-2">
+                        <div className="cbt-actions">
                           <Link href={`/users/staff/edit?id=${item.id}`} className="btn btn-sm btn-outline-primary mr-1">
                             Edit
                           </Link>
                           {canManageUsers ? (
                             <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => void toggleStatus(item)}>
                               {item.status === "active" ? "Deactivate" : "Activate"}
+                            </button>
+                          ) : null}
+                          {canManageUsers ? (
+                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => void handleDelete(item)}>
+                              Delete
                             </button>
                           ) : null}
                         </div>
