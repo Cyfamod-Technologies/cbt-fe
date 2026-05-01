@@ -186,9 +186,9 @@ function TakeInner() {
         .cbt-question-title{font-size:22px;font-weight:600;margin-top:10px;margin-bottom:6px;}
         .cbt-question-top{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;}
         .cbt-question-tags{display:flex;gap:8px;flex-wrap:wrap;}
-        .cbt-tag{padding:6px 12px;border-radius:999px;background:rgba(42,157,143,.14);
-          color:#1f756d;font-size:12px;font-weight:600;text-transform:uppercase;}
-        .cbt-tag--muted{background:rgba(228,87,46,.14);color:#8f3a20;}
+        .cbt-tag{padding:4px 10px;border-radius:8px;background:#1a1a1a;
+          color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+        .cbt-tag--muted{background:transparent;border:1px solid #cec8c0;color:#6b6f76;}
         .cbt-answer-block{margin-top:20px;display:grid;gap:12px;}
         .cbt-option{display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;
           padding:14px 16px;border-radius:16px;border:1px solid var(--cbt-border);background:#fffdfb;
