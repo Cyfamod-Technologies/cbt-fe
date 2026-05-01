@@ -235,7 +235,7 @@ export async function listCourses() {
 export async function createCourse(payload: {
   code: string;
   title: string;
-  department_id: number;
+  department_id?: number | null;
   level_id?: number | null;
   semester_id?: number | null;
 }) {
@@ -448,4 +448,28 @@ export async function updateStaffExamOfficer(
 
 export async function deleteStaffExamOfficer(id: number) {
   await apiFetch(`/api/v1/staff-exam-officers/${id}`, { method: "DELETE" });
+}
+
+export interface StudentCourseEnrollment {
+  id: number;
+  school_id: number;
+  student_id: number;
+  course_id: number;
+  type: string;
+  course?: Course;
+}
+
+export async function listStudentCourseEnrollments(userId: number) {
+  return (await apiFetch<CollectionResponse<StudentCourseEnrollment>>(`/api/v1/users/${userId}/course-enrollments`)).data;
+}
+
+export async function createStudentCourseEnrollment(userId: number, payload: { course_id: number; type?: string }) {
+  return (await apiFetch<ItemResponse<StudentCourseEnrollment>>(`/api/v1/users/${userId}/course-enrollments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function deleteStudentCourseEnrollment(userId: number, enrollmentId: number) {
+  await apiFetch(`/api/v1/users/${userId}/course-enrollments/${enrollmentId}`, { method: "DELETE" });
 }

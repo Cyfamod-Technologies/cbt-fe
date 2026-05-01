@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
+  createCourse,
+  updateCourse,
   createStaffCourseAssignment,
   createStaffExamOfficer,
   deleteStaffCourseAssignment,
@@ -365,7 +367,7 @@ export function ExamOfficerAssignmentsPage() {
       }));
       setFeedback(null);
     } catch (error) {
-      setFeedback(toDanger(error, "Unable to load assessment officer assignments."));
+      setFeedback(toDanger(error, "Unable to load exam officer assignments."));
     } finally {
       setLoading(false);
     }
@@ -426,7 +428,7 @@ export function ExamOfficerAssignmentsPage() {
           await createStaffExamOfficer(payload);
         }
       },
-      editingId ? "Assessment officer assignment updated." : "Assessment officer assignment created.",
+      editingId ? "Exam officer assignment updated." : "Exam officer assignment created.",
       load,
       setFeedback,
     );
@@ -449,7 +451,7 @@ export function ExamOfficerAssignmentsPage() {
   };
 
   const removeAssignment = async (assignment: StaffExamOfficer) => {
-    if (!window.confirm(`Remove assessment officer assignment for ${assignment.staff?.full_name || "this staff"}?`)) {
+    if (!window.confirm(`Remove exam officer assignment for ${assignment.staff?.full_name || "this staff"}?`)) {
       return;
     }
 
@@ -457,19 +459,19 @@ export function ExamOfficerAssignmentsPage() {
       async () => {
         await deleteStaffExamOfficer(assignment.id);
       },
-      "Assessment officer assignment removed.",
+      "Exam officer assignment removed.",
       load,
       setFeedback,
     );
   };
 
   return (
-    <AssignShell title="Assessment-Officer to Dept/Level" current="Assessment-Officer to Dept/Level">
+    <AssignShell title="Exam-Officer to Dept/Level" current="Exam-Officer to Dept/Level">
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
           <FormCard
-            title={editingId ? "Edit Assessment-Officer to Dept/Level" : "Assign Assessment-Officer to Dept/Level"}
+            title={editingId ? "Edit Exam-Officer to Dept/Level" : "Assign Exam-Officer to Dept/Level"}
             disabled={!canManageUsers}
             onSubmit={submit}
           >
@@ -549,7 +551,7 @@ export function ExamOfficerAssignmentsPage() {
             includeScope
           />
           <TableCard
-            title="Assigned Assessment-Officers to Dept/Level"
+            title="Assigned Exam-Officers to Dept/Level"
             loading={loading}
             headers={["Staff", "Session", "Semester", "Department", "Scope", "Level", "Actions"]}
             rows={filteredAssignments.map((assignment) => [
@@ -579,6 +581,426 @@ export function ExamOfficerAssignmentsPage() {
               </div>,
             ])}
           />
+        </div>
+      </div>
+    </AssignShell>
+  );
+}
+
+type AddRow = { code: string; title: string };
+
+export function DeptLevelCoursesPage() {
+  const { user } = useAuth();
+  const canManage = Boolean(user?.capabilities?.manage_catalog);
+
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [levels, setLevels] = useState<Level[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+
+  // Selectors (used for both filter view + assigning)
+  const [assignDeptId, setAssignDeptId] = useState("");
+  const [assignLevelId, setAssignLevelId] = useState("");
+
+  // Filter state
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterDeptId, setFilterDeptId] = useState("");
+  const [filterLevelId, setFilterLevelId] = useState("");
+
+  // Multi-row add form
+  const [addRows, setAddRows] = useState<AddRow[]>([{ code: "", title: "" }]);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Inline edit state: courseId → draft values
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState({ code: "", title: "", level_id: "" });
+  const [editSaving, setEditSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [depts, lvls, courseList] = await Promise.all([listDepartments(), listLevels(), listCourses()]);
+      setDepartments(depts);
+      setLevels(lvls);
+      setCourses(courseList);
+    } catch (err) {
+      setFeedback(toDanger(err, "Unable to load courses."));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const filteredCourses = useMemo(() => {
+    const search = filterSearch.trim().toLowerCase();
+    return courses.filter((c) => {
+      if (filterDeptId && c.department_id !== Number(filterDeptId)) return false;
+      if (filterLevelId && c.level_id !== null && c.level_id !== Number(filterLevelId)) return false;
+      if (search) {
+        const hay = [c.code, c.title, c.department?.name, c.level?.name].filter(Boolean).join(" ").toLowerCase();
+        if (!hay.includes(search)) return false;
+      }
+      return true;
+    });
+  }, [courses, filterDeptId, filterLevelId, filterSearch]);
+
+  const addRowField = (index: number, key: keyof AddRow, value: string) => {
+    setAddRows((rows) => rows.map((r, i) => i === index ? { ...r, [key]: value } : r));
+  };
+
+  const handleAddRows = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!assignDeptId) {
+      setFeedback({ type: "danger", message: "Please select a department before adding courses." });
+      return;
+    }
+    const valid = addRows.filter((r) => r.code.trim() && r.title.trim());
+    if (valid.length === 0) {
+      setFeedback({ type: "danger", message: "Enter at least one course with a code and title." });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const created = await Promise.all(
+        valid.map((r) =>
+          createCourse({
+            code: r.code.trim(),
+            title: r.title.trim(),
+            department_id: Number(assignDeptId),
+            level_id: assignLevelId ? Number(assignLevelId) : null,
+          }),
+        ),
+      );
+      setCourses((prev) => [...prev, ...created]);
+      setAddRows([{ code: "", title: "" }]);
+      setFeedback({ type: "success", message: `${created.length} course${created.length > 1 ? "s" : ""} added.` });
+    } catch (err) {
+      setFeedback(toDanger(err, "Failed to add courses."));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const startEdit = (course: Course) => {
+    setEditingId(course.id);
+    setEditDraft({
+      code: course.code,
+      title: course.title,
+      level_id: course.level_id ? String(course.level_id) : "",
+    });
+  };
+
+  const cancelEdit = () => { setEditingId(null); };
+
+  const saveEdit = async (courseId: number) => {
+    setEditSaving(true);
+    try {
+      const updated = await updateCourse(courseId, {
+        code: editDraft.code.trim(),
+        title: editDraft.title.trim(),
+        level_id: editDraft.level_id ? Number(editDraft.level_id) : null,
+      });
+      setCourses((prev) => prev.map((c) => c.id === courseId ? updated : c));
+      setEditingId(null);
+      setFeedback({ type: "success", message: "Course updated." });
+    } catch (err) {
+      setFeedback(toDanger(err, "Failed to update course."));
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const assignDept = departments.find((d) => String(d.id) === assignDeptId);
+  const assignLevel = levels.find((l) => String(l.id) === assignLevelId);
+
+  return (
+    <AssignShell title="Courses to Dept/Level" current="Courses to Dept/Level">
+      <FeedbackAlert feedback={feedback} />
+
+      <div className="row">
+        {/* Left: Assign dept/level + multi-row add */}
+        <div className="col-lg-4 col-12">
+          <div className="card height-auto mb-4">
+            <div className="card-body">
+              <div className="heading-layout1 mb-0">
+                <div className="item-title">
+                  <h3>Assign to Dept / Level</h3>
+                </div>
+              </div>
+
+              <label className="mt-3">Department *</label>
+              <select
+                className="form-control"
+                value={assignDeptId}
+                onChange={(e) => setAssignDeptId(e.target.value)}
+                disabled={loading}
+              >
+                <option value="">— Select Department —</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+
+              <label className="mt-3">Level (optional)</label>
+              <select
+                className="form-control"
+                value={assignLevelId}
+                onChange={(e) => setAssignLevelId(e.target.value)}
+                disabled={loading}
+              >
+                <option value="">— All Levels —</option>
+                {levels.map((l) => (
+                  <option key={l.id} value={l.id}>{l.name}</option>
+                ))}
+              </select>
+
+              {assignDept && (
+                <div className="mt-3 p-2" style={{ background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0" }}>
+                  <small className="text-success font-weight-bold">
+                    {assignDept.name}{assignLevel ? ` — ${assignLevel.name}` : " — All Levels"}
+                  </small>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Multi-row add form */}
+          <div className="card height-auto mb-4">
+            <div className="card-body">
+              <div className="heading-layout1 mb-0">
+                <div className="item-title">
+                  <h3>Add Courses</h3>
+                  <p className="mb-0 text-muted small">Add multiple courses at once.</p>
+                </div>
+              </div>
+
+              <form className="new-added-form mt-3" onSubmit={(e) => void handleAddRows(e)}>
+                <fieldset disabled={!canManage || submitting}>
+                  {addRows.map((row, i) => (
+                    <div key={i} className="d-flex gap-2 align-items-center mb-2">
+                      <input
+                        className="form-control"
+                        placeholder="Code"
+                        style={{ width: "35%" }}
+                        value={row.code}
+                        onChange={(e) => addRowField(i, "code", e.target.value)}
+                        required={i === 0}
+                      />
+                      <input
+                        className="form-control"
+                        placeholder="Title"
+                        style={{ flex: 1 }}
+                        value={row.title}
+                        onChange={(e) => addRowField(i, "title", e.target.value)}
+                        required={i === 0}
+                      />
+                      {addRows.length > 1 && (
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => setAddRows((rows) => rows.filter((_, idx) => idx !== i))}
+                          title="Remove row"
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <div className="d-flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-outline-secondary"
+                      disabled={!canManage}
+                      onClick={() => setAddRows((rows) => [...rows, { code: "", title: "" }])}
+                    >
+                      + Add Row
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark"
+                      disabled={!canManage || submitting || !assignDeptId}
+                    >
+                      {submitting ? "Saving..." : "Save All"}
+                    </button>
+                  </div>
+                </fieldset>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Filter + Course list */}
+        <div className="col-lg-8 col-12">
+          <AssignmentSummary
+            cards={[
+              ["Total Courses", courses.length],
+              ["Showing", filteredCourses.length],
+              ["Departments", departments.length],
+              ["Levels", levels.length],
+            ]}
+          />
+
+          {/* Filter bar */}
+          <div className="card height-auto mb-3">
+            <div className="card-body">
+              <div className="row gutters-8 align-items-end">
+                <div className="col-lg-4 col-12 form-group mb-0">
+                  <label>Search</label>
+                  <input
+                    className="form-control"
+                    placeholder="Code, title, dept..."
+                    value={filterSearch}
+                    onChange={(e) => setFilterSearch(e.target.value)}
+                  />
+                </div>
+                <div className="col-lg-3 col-12 form-group mb-0">
+                  <label>Department</label>
+                  <select className="form-control" value={filterDeptId} onChange={(e) => setFilterDeptId(e.target.value)}>
+                    <option value="">All Departments</option>
+                    {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div className="col-lg-3 col-12 form-group mb-0">
+                  <label>Level</label>
+                  <select className="form-control" value={filterLevelId} onChange={(e) => setFilterLevelId(e.target.value)}>
+                    <option value="">All Levels</option>
+                    {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                </div>
+                <div className="col-lg-2 col-12 form-group mb-0">
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={() => { setFilterSearch(""); setFilterDeptId(""); setFilterLevelId(""); }}
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card height-auto">
+            <div className="card-body">
+              <div className="heading-layout1 mb-0">
+                <div className="item-title">
+                  <h3>Courses</h3>
+                </div>
+                <span className="badge badge-info">{filteredCourses.length}</span>
+              </div>
+              {loading ? (
+                <div className="text-muted mt-3">Loading...</div>
+              ) : (
+                <div className="table-responsive mt-3">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Code</th>
+                        <th>Title</th>
+                        <th>Department</th>
+                        <th>Level</th>
+                        <th>Semester</th>
+                        <th>Status</th>
+                        {canManage && <th>Action</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCourses.length === 0 ? (
+                        <tr>
+                          <td colSpan={canManage ? 7 : 6} className="text-muted">
+                            No courses found.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredCourses.map((course) =>
+                          editingId === course.id ? (
+                            <tr key={course.id}>
+                              <td>
+                                <input
+                                  className="form-control form-control-sm"
+                                  value={editDraft.code}
+                                  onChange={(e) => setEditDraft((d) => ({ ...d, code: e.target.value }))}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  className="form-control form-control-sm"
+                                  value={editDraft.title}
+                                  onChange={(e) => setEditDraft((d) => ({ ...d, title: e.target.value }))}
+                                />
+                              </td>
+                              <td>{course.department?.name || "—"}</td>
+                              <td>
+                                <select
+                                  className="form-control form-control-sm"
+                                  value={editDraft.level_id}
+                                  onChange={(e) => setEditDraft((d) => ({ ...d, level_id: e.target.value }))}
+                                >
+                                  <option value="">Any Level</option>
+                                  {levels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                                </select>
+                              </td>
+                              <td>{course.semester?.name || "Any"}</td>
+                              <td>
+                                <span className={`badge ${course.status === "active" ? "badge-success" : "badge-secondary"}`}>
+                                  {course.status}
+                                </span>
+                              </td>
+                              <td>
+                                <div className="d-flex gap-1">
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-success"
+                                    disabled={editSaving}
+                                    onClick={() => void saveEdit(course.id)}
+                                  >
+                                    {editSaving ? "..." : "Save"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={cancelEdit}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            <tr key={course.id}>
+                              <td><code>{course.code}</code></td>
+                              <td>{course.title}</td>
+                              <td>{course.department?.name || "—"}</td>
+                              <td>{course.level?.name || "Any"}</td>
+                              <td>{course.semester?.name || "Any"}</td>
+                              <td>
+                                <span className={`badge ${course.status === "active" ? "badge-success" : "badge-secondary"}`}>
+                                  {course.status}
+                                </span>
+                              </td>
+                              {canManage && (
+                                <td>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-outline-secondary"
+                                    onClick={() => startEdit(course)}
+                                  >
+                                    Edit
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          )
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </AssignShell>

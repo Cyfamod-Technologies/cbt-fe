@@ -20,7 +20,7 @@ export function QuizAdminDashboard() {
     try {
       setAssessments(await listAssessments());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load quizzes.");
+      setError(err instanceof Error ? err.message : "Failed to load assessments.");
     } finally {
       setLoading(false);
     }
@@ -52,7 +52,7 @@ export function QuizAdminDashboard() {
       }
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to update quiz.");
+      setError(err instanceof Error ? err.message : "Unable to update assessment.");
     } finally {
       setBusyId(null);
     }
@@ -68,7 +68,7 @@ export function QuizAdminDashboard() {
       await deleteAssessment(assessment.id);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to delete quiz.");
+      setError(err instanceof Error ? err.message : "Unable to delete assessment.");
     } finally {
       setBusyId(null);
     }
@@ -77,18 +77,18 @@ export function QuizAdminDashboard() {
   return (
     <>
       <div className="breadcrumbs-area quiz-fade-up">
-        <h3>Quiz Management</h3>
+        <h3>Assessment Management</h3>
         <ul>
           <li>
             <Link href="/cbt">CBT</Link>
           </li>
-          <li>Quiz Management</li>
+          <li>Assessment Management</li>
         </ul>
       </div>
 
       <div className="row gutters-20 quiz-fade-up quiz-fade-up-delay-1">
         {[
-          ["Total Quizzes", stats.total, "bg-skyblue"],
+          ["Total Assessments", stats.total, "bg-skyblue"],
           ["Draft", stats.draft, "bg-yellow"],
           ["Published", stats.published, "bg-light-green"],
           ["Closed", stats.closed, "bg-violet-blue"],
@@ -106,14 +106,14 @@ export function QuizAdminDashboard() {
         <div className="card-body">
           <div className="heading-layout1">
             <div className="item-title">
-              <h3>All Quizzes</h3>
+              <h3>All Assessments</h3>
             </div>
             <div className="cbt-actions">
               <Link href="/cbt/admin/live" className="btn btn-outline-secondary">
                 Live Monitor
               </Link>
               <Link href="/cbt/admin/create" className="btn btn-primary">
-                + Create New Quiz
+                + Create New Assessment
               </Link>
             </div>
           </div>
@@ -143,11 +143,11 @@ export function QuizAdminDashboard() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6}>Loading quizzes...</td>
+                    <td colSpan={6}>Loading assessments...</td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>No quizzes found for this filter.</td>
+                    <td colSpan={6}>No assessments found for this filter.</td>
                   </tr>
                 ) : (
                   filtered.map((assessment) => (

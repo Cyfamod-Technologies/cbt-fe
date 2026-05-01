@@ -598,7 +598,7 @@ export function DepartmentsManagementPage() {
                 disabled={!canManageCatalog}
                 onClick={() => startEdit(department)}
               >
-                Edit
+                Edit Dept & Levels
               </button>,
             ])}
           />
@@ -610,9 +610,8 @@ export function DepartmentsManagementPage() {
 
 export function CoursesManagementPage() {
   const { user } = useAuth();
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [form, setForm] = useState({ departmentId: "", code: "", title: "" });
+  const [form, setForm] = useState({ code: "", title: "" });
   const [editingCourseId, setEditingCourseId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -621,13 +620,7 @@ export function CoursesManagementPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [departmentData, courseData] = await Promise.all([listDepartments(), listCourses()]);
-      setDepartments(departmentData);
-      setCourses(courseData);
-      setForm((current) => ({
-        ...current,
-        departmentId: current.departmentId || String(departmentData[0]?.id || ""),
-      }));
+      setCourses(await listCourses());
     } catch (error) {
       setFeedback(toDanger(error, "Unable to load courses."));
     } finally {
@@ -645,18 +638,16 @@ export function CoursesManagementPage() {
       async () => {
         if (editingCourseId) {
           await updateCourse(editingCourseId, {
-            department_id: Number(form.departmentId),
             code: form.code.trim(),
             title: form.title.trim(),
           });
         } else {
           await createCourse({
-            department_id: Number(form.departmentId),
             code: form.code.trim(),
             title: form.title.trim(),
           });
         }
-        setForm((current) => ({ ...current, code: "", title: "" }));
+        setForm({ code: "", title: "" });
         setEditingCourseId(null);
       },
       editingCourseId ? "Course updated." : "Course created.",
@@ -667,16 +658,12 @@ export function CoursesManagementPage() {
 
   const startEdit = (course: Course) => {
     setEditingCourseId(course.id);
-    setForm({
-      departmentId: String(course.department_id),
-      code: course.code,
-      title: course.title,
-    });
+    setForm({ code: course.code, title: course.title });
   };
 
   const cancelEdit = () => {
     setEditingCourseId(null);
-    setForm((current) => ({ ...current, code: "", title: "" }));
+    setForm({ code: "", title: "" });
   };
 
   return (
@@ -689,21 +676,7 @@ export function CoursesManagementPage() {
             onSubmit={submit}
             disabled={!canManageCatalog}
           >
-            <label>Department</label>
-            <select
-              className="form-control"
-              value={form.departmentId}
-              onChange={(event) => setForm((current) => ({ ...current, departmentId: event.target.value }))}
-              required
-            >
-              <option value="">Select Department</option>
-              {departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
-            </select>
-            <label className="mt-3">Course Code</label>
+            <label>Course Code</label>
             <input
               className="form-control"
               placeholder="GST101"
@@ -776,9 +749,11 @@ function LevelChips({
       {levels.map((level) => (
         <span className="department-level-chip" key={level.id}>
           <span>{level.name}</span>
-          <button type="button" disabled={!canManage} onClick={() => onEdit(department, level)}>
-            Edit
-          </button>
+          {canManage ? (
+            <button type="button" onClick={() => onEdit(department, level)}>
+              Edit
+            </button>
+          ) : null}
         </span>
       ))}
     </div>

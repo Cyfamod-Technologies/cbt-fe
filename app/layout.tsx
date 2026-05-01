@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+} as const;
+
 const schoolStylesheets = [
   "/assets/css/normalize.css",
   "/assets/css/bootstrap.min.css",

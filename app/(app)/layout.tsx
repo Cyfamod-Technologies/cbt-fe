@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,17 +30,18 @@ const staffLinks = [
 const studentLinks = [
   { label: "View Student", href: "/users/students" },
   { label: "Bulk Upload", href: "/users/students/bulk-upload" },
-  { label: "Student dept/level", href: "/users/students/overrides" },
-  { label: "Student Courses", href: "/users/students/student-courses" },
+  // { label: "Student dept/level", href: "/users/students/overrides" },
+  // { label: "Student Courses", href: "/users/students/student-courses" },
 ] as const;
 
 const assignLinks = [
+  { label: "Courses to Dept/Level", href: "/assign/dept-level-courses" },
   { label: "Lecturer to Course", href: "/assign/lecturer-courses" },
-  { label: "Assessment-Officer to Dept/Level", href: "/assign/exam-officers" },
+  { label: "Exam-Officer to Dept/Level", href: "/assign/exam-officers" },
 ] as const;
 
 const cbtLinks = [
-  { label: "Quiz Management", href: "/cbt/admin" },
+  { label: "Assessment Management", href: "/cbt/admin" },
   { label: "Live Monitor", href: "/cbt/admin/live" },
   { label: "Results", href: "/cbt/results" },
   { label: "History", href: "/cbt/history" },
@@ -65,7 +67,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [assignCollapsed, setAssignCollapsed] = useState(false);
   const [cbtOpen, setCbtOpen] = useState(false);
   const [cbtCollapsed, setCbtCollapsed] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const showManagement = managementOpen || (managementActive && !managementCollapsed);
   const showStaff = staffOpen || (staffActive && !staffCollapsed);
   const showStudents = studentsOpen || (studentsActive && !studentsCollapsed);
@@ -81,20 +84,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     }
   }, [loading, pathname, router, user]);
-
-  useEffect(() => {
-    setManagementOpen(false);
-    setManagementCollapsed(false);
-    setStaffOpen(false);
-    setStaffCollapsed(false);
-    setStudentsOpen(false);
-    setStudentsCollapsed(false);
-    setAssignOpen(false);
-    setAssignCollapsed(false);
-    setCbtOpen(false);
-    setCbtCollapsed(false);
-    setSidebarOpen(false);
-  }, [pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -112,11 +101,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setAssignCollapsed(false);
     setCbtOpen(false);
     setCbtCollapsed(false);
-    setSidebarOpen(false);
+    setSidebarMobileOpen(false);
   };
 
   const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+      setSidebarMobileOpen((current) => !current);
+      setSidebarCollapsed(false);
+      return;
+    }
+
+    setSidebarCollapsed((current) => !current);
+    setSidebarMobileOpen(false);
   };
 
   const toggleManagement = () => {
@@ -199,23 +195,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     ) : null;
   }
 
+  const isAdmin = user.role === "admin" || user.role === "super_admin";
   const roleLabel = user.role.replaceAll("_", " ");
   const initial = user.name?.charAt(0)?.toUpperCase() || "U";
 
   return (
-    <div id="wrapper" className="wrapper bg-ash">
+    <div
+      id="wrapper"
+      className={`wrapper bg-ash ${sidebarCollapsed ? "sidebar-collapsed" : ""} ${
+        sidebarMobileOpen ? "sidebar-collapsed-mobile" : ""
+      }`}
+    >
       <div className="navbar navbar-expand-md header-menu-one bg-light">
         <div className="nav-bar-header-one">
-          <div className="header-logo">
-            <Link href="/dashboard">Cyfamod CBT</Link>
-          </div>
-          <div className="toggle-button sidebar-toggle">
+          <div className="toggle-button sidebar-toggle desktop-sidebar-toggle">
             <button type="button" className="item-link" aria-label="Toggle sidebar" onClick={toggleSidebar}>
               <span className="btn-icon-wrap">
                 <span />
                 <span />
                 <span />
               </span>
+            </button>
+          </div>
+          <div className="mobile-header-actions">
+            <button type="button" className="mobile-header-action" aria-label="Quick action">
+              <i className="far fa-arrow-alt-circle-down" aria-hidden="true" />
+            </button>
+            <button type="button" className="mobile-header-action" onClick={toggleSidebar} aria-label="Toggle sidebar">
+              <i className="fas fa-bars" aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -253,7 +260,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="dashboard-page-one">
-        <aside className={`sidebar-main sidebar-menu-one sidebar-expand-md sidebar-color ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        <aside className="sidebar-main sidebar-menu-one sidebar-expand-md sidebar-color">
+          <div className="mobile-sidebar-header d-md-none">
+            <div className="header-logo">
+              <Link href="/dashboard" className="sidebar-brand-link d-flex align-items-center">
+                <Image
+                  src="/assets/img/logo1.png"
+                  alt="Cyfamod CBT"
+                  width={54}
+                  height={54}
+                  unoptimized
+                  className="sidebar-school-logo"
+                />
+                <span className="sidebar-brand-text">
+                  <span>Cyfamod</span>
+                  <span>CBT</span>
+                </span>
+              </Link>
+            </div>
+          </div>
           <div className="sidebar-menu-content">
             <ul className="nav nav-sidebar-menu sidebar-toggle-view cbt-sidebar-menu">
               <li className="sidebar-section-label">CBT Workspace</li>
@@ -268,94 +293,109 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </li>
                 );
               })}
-              <li className={`nav-item sidebar-nav-item ${managementActive ? "active" : ""}`}>
-                <button
-                  type="button"
-                  className={`nav-link sidebar-nav-button ${managementActive ? "menu-active" : ""}`}
-                  onClick={toggleManagement}
-                >
-                  <span>Management</span>
-                </button>
-                <ul className={`sub-group-menu ${showManagement ? "sub-group-active" : ""}`}>
-                  {managementLinks.map((item) => {
-                    const active = isRouteActive(item.href);
+              {!isAdmin && (
+                <li className={`nav-item ${pathname === "/users/students" ? "active" : ""}`}>
+                  <Link href="/users/students" className="nav-link" onClick={closeSidebarGroups}>
+                    <span>Students</span>
+                  </Link>
+                </li>
+              )}
+              {isAdmin && (
+                <li className={`nav-item sidebar-nav-item ${managementActive ? "active" : ""}`}>
+                  <button
+                    type="button"
+                    className={`nav-link sidebar-nav-button ${managementActive ? "menu-active" : ""}`}
+                    onClick={toggleManagement}
+                  >
+                    <span>Management</span>
+                  </button>
+                  <ul className={`sub-group-menu ${showManagement ? "sub-group-active" : ""}`}>
+                    {managementLinks.map((item) => {
+                      const active = isRouteActive(item.href);
 
-                    return (
-                      <li className="nav-item" key={item.href}>
-                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
-                          <span>{item.label}</span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </li>
-              <li className={`nav-item sidebar-nav-item ${staffActive ? "active" : ""}`}>
-                <button
-                  type="button"
-                  className={`nav-link sidebar-nav-button ${staffActive ? "menu-active" : ""}`}
-                  onClick={toggleStaff}
-                >
-                  <span>Staff</span>
-                </button>
-                <ul className={`sub-group-menu ${showStaff ? "sub-group-active" : ""}`}>
-                  {staffLinks.map((item) => {
-                    const active = isRouteActive(item.href);
+                      return (
+                        <li className="nav-item" key={item.href}>
+                          <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
+                            <span>{item.label}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              )}
+              {isAdmin && (
+                <li className={`nav-item sidebar-nav-item ${staffActive ? "active" : ""}`}>
+                  <button
+                    type="button"
+                    className={`nav-link sidebar-nav-button ${staffActive ? "menu-active" : ""}`}
+                    onClick={toggleStaff}
+                  >
+                    <span>Staff</span>
+                  </button>
+                  <ul className={`sub-group-menu ${showStaff ? "sub-group-active" : ""}`}>
+                    {staffLinks.map((item) => {
+                      const active = isRouteActive(item.href);
 
-                    return (
-                      <li className="nav-item" key={item.href}>
-                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
-                          <span>{item.label}</span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </li>
-              <li className={`nav-item sidebar-nav-item ${studentsActive ? "active" : ""}`}>
-                <button
-                  type="button"
-                  className={`nav-link sidebar-nav-button ${studentsActive ? "menu-active" : ""}`}
-                  onClick={toggleStudents}
-                >
-                  <span>Students</span>
-                </button>
-                <ul className={`sub-group-menu ${showStudents ? "sub-group-active" : ""}`}>
-                  {studentLinks.map((item) => {
-                    const active = item.href === "/users/students" ? pathname === item.href : isRouteActive(item.href);
+                      return (
+                        <li className="nav-item" key={item.href}>
+                          <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
+                            <span>{item.label}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              )}
+              {isAdmin && (
+                <li className={`nav-item sidebar-nav-item ${studentsActive ? "active" : ""}`}>
+                  <button
+                    type="button"
+                    className={`nav-link sidebar-nav-button ${studentsActive ? "menu-active" : ""}`}
+                    onClick={toggleStudents}
+                  >
+                    <span>Students</span>
+                  </button>
+                  <ul className={`sub-group-menu ${showStudents ? "sub-group-active" : ""}`}>
+                    {studentLinks.map((item) => {
+                      const active = item.href === "/users/students" ? pathname === item.href : isRouteActive(item.href);
 
-                    return (
-                      <li className="nav-item" key={item.href}>
-                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
-                          <span>{item.label}</span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </li>
-              <li className={`nav-item sidebar-nav-item ${assignActive ? "active" : ""}`}>
-                <button
-                  type="button"
-                  className={`nav-link sidebar-nav-button ${assignActive ? "menu-active" : ""}`}
-                  onClick={toggleAssign}
-                >
-                  <span>Assign</span>
-                </button>
-                <ul className={`sub-group-menu ${showAssign ? "sub-group-active" : ""}`}>
-                  {assignLinks.map((item) => {
-                    const active = isRouteActive(item.href);
+                      return (
+                        <li className="nav-item" key={item.href}>
+                          <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
+                            <span>{item.label}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              )}
+              {isAdmin && (
+                <li className={`nav-item sidebar-nav-item ${assignActive ? "active" : ""}`}>
+                  <button
+                    type="button"
+                    className={`nav-link sidebar-nav-button ${assignActive ? "menu-active" : ""}`}
+                    onClick={toggleAssign}
+                  >
+                    <span>Assign</span>
+                  </button>
+                  <ul className={`sub-group-menu ${showAssign ? "sub-group-active" : ""}`}>
+                    {assignLinks.map((item) => {
+                      const active = isRouteActive(item.href);
 
-                    return (
-                      <li className="nav-item" key={item.href}>
-                        <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
-                          <span>{item.label}</span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </li>
+                      return (
+                        <li className="nav-item" key={item.href}>
+                          <Link href={item.href} className={`nav-link ${active ? "menu-active" : ""}`} onClick={closeSidebarGroups}>
+                            <span>{item.label}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              )}
               <li className={`nav-item sidebar-nav-item ${cbtActive ? "active" : ""}`}>
                 <button
                   type="button"
@@ -391,8 +431,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </ul>
           </div>
         </aside>
-        {sidebarOpen && <div className="sidebar-overlay" onClick={toggleSidebar}></div>}
-        <main className="dashboard-content-one">{children}</main>
+        {sidebarMobileOpen && <div className="sidebar-overlay" onClick={() => setSidebarMobileOpen(false)}></div>}
+        <main className="dashboard-content-one" onClick={() => setSidebarMobileOpen(false)}>
+          {children}
+        </main>
       </div>
     </div>
   );

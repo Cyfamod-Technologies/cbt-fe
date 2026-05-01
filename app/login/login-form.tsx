@@ -5,18 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const demoCredentials = [
-  { label: "Admin", schoolCode: "CYFAMOD", email: "admin@cbt.local" },
-  { label: "Staff", schoolCode: "CYFAMOD", email: "staff@cbt.local" },
-  { label: "Student", schoolCode: "CYFAMOD", email: "student@cbt.local" },
-] as const;
+const SCHOOL_CODE = process.env.NEXT_PUBLIC_SCHOOL_CODE ?? "";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, loading, user } = useAuth();
-  const [schoolCode, setSchoolCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -38,8 +32,8 @@ export function LoginForm() {
     setError(null);
     setEmailError(null);
 
-    if (!schoolCode || !email || !password) {
-      setError("Please enter school code, email, and password.");
+    if (!email || !password) {
+      setError("Please enter your email and password.");
       return;
     }
 
@@ -50,7 +44,7 @@ export function LoginForm() {
 
     try {
       setSubmitting(true);
-      await login({ school_code: schoolCode.trim(), email, password });
+      await login({ school_code: SCHOOL_CODE, email, password });
       router.push(nextPath);
     } catch (authError) {
       setError(
@@ -63,14 +57,6 @@ export function LoginForm() {
     }
   };
 
-  const fillDemoCredentials = (demoSchoolCode: string, demoEmail: string) => {
-    setSchoolCode(demoSchoolCode);
-    setEmail(demoEmail);
-    setPassword("password");
-    setError(null);
-    setEmailError(null);
-  };
-
   return (
     <form id="login-form" className="login-form" onSubmit={handleSubmit}>
       {error ? (
@@ -78,23 +64,6 @@ export function LoginForm() {
           {error}
         </div>
       ) : null}
-
-      <div className="form-group">
-        <label htmlFor="school-code">School Code</label>
-        <input
-          id="school-code"
-          type="text"
-          placeholder="Enter school code"
-          className="form-control"
-          autoComplete="organization"
-          required
-          value={schoolCode}
-          onChange={(event) => setSchoolCode(event.target.value)}
-        />
-        <span className="field-icon" aria-hidden="true">
-          #
-        </span>
-      </div>
 
       <div className="form-group">
         <label htmlFor="email">Email</label>
@@ -168,7 +137,7 @@ export function LoginForm() {
       </div>
 
       <div className="form-group">
-        <button type="submit" className="login-btn" disabled={submitting || loading}>
+        <button type="submit" className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark btn-block" disabled={submitting || loading}>
           {submitting ? "Signing in..." : "Login"}
         </button>
       </div>
