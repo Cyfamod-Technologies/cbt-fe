@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { StudentAuthProvider, useStudentAuth } from "@/contexts/StudentAuthContext";
 import { studentFetch } from "@/lib/studentAuth";
@@ -29,6 +29,7 @@ function TakeInner() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
+  const submitCalledRef = useRef(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -40,12 +41,25 @@ function TakeInner() {
         const [asmtRes, qRes, attemptRes] = await Promise.all([
           studentFetch<{ data: Assessment }>(`/api/v1/assessments/${assessmentId}`),
           studentFetch<{ data: AssessmentQuestion[] }>(`/api/v1/assessments/${assessmentId}/questions`),
-          studentFetch<{ data: { id: number } }>(`/api/v1/assessments/${assessmentId}/attempts`, { method: "POST", body: JSON.stringify({}) }),
+          studentFetch<{ data: { id: number; start_time: string } }>(`/api/v1/assessments/${assessmentId}/attempts`, { method: "POST", body: JSON.stringify({}) }),
         ]);
         setAssessment(asmtRes.data);
         setQuestions(qRes.data ?? []);
         setAttemptId(attemptRes.data.id);
-        setTimeLeft((asmtRes.data.duration_minutes ?? 45) * 60);
+
+        // Calculate remaining time from server start_time so refreshing never resets the clock
+        const startMs = new Date(attemptRes.data.start_time).getTime();
+        const durationMs = (asmtRes.data.duration_minutes ?? 45) * 60 * 1000;
+        const remaining = Math.max(0, Math.floor((startMs + durationMs - Date.now()) / 1000));
+        setTimeLeft(remaining);
+
+        // Restore any answers saved to localStorage for this attempt
+        try {
+          const saved = localStorage.getItem(`cbt_answers_${attemptRes.data.id}`);
+          if (saved) {
+            setAnswers(new Map(JSON.parse(saved) as [number, Answer][]));
+          }
+        } catch { /* ignore corrupt storage */ }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load assessment.");
       } finally {
@@ -54,8 +68,17 @@ function TakeInner() {
     })();
   }, [authLoading, student, assessmentId, router]);
 
+  // Persist answers to localStorage whenever they change
+  useEffect(() => {
+    if (!attemptId || answers.size === 0) return;
+    try {
+      localStorage.setItem(`cbt_answers_${attemptId}`, JSON.stringify([...answers]));
+    } catch { /* ignore storage errors */ }
+  }, [answers, attemptId]);
+
   const submitQuiz = useCallback(async () => {
-    if (!attemptId) return;
+    if (!attemptId || submitCalledRef.current) return;
+    submitCalledRef.current = true;
     setSubmitting(true);
     try {
       const answersArray = questions.map((q) => {
@@ -73,18 +96,27 @@ function TakeInner() {
         method: "POST",
         body: JSON.stringify({ answers: answersArray }),
       });
+      try { localStorage.removeItem(`cbt_answers_${attemptId}`); } catch { /* ignore */ }
       router.push(`/access/results/${attemptId}`);
     } catch (e) {
+      submitCalledRef.current = false;
       setError(e instanceof Error ? e.message : "Failed to submit.");
       setSubmitting(false);
     }
   }, [attemptId, questions, answers, router]);
 
+  // Countdown timer — just counts down, no submit logic inside
   useEffect(() => {
     if (timeLeft <= 0 || !attemptId) return;
-    const t = setInterval(() => setTimeLeft((p) => { if (p <= 1) { void submitQuiz(); return 0; } return p - 1; }), 1000);
+    const t = setInterval(() => setTimeLeft((p) => Math.max(0, p - 1)), 1000);
     return () => clearInterval(t);
-  }, [timeLeft, attemptId, submitQuiz]);
+  }, [timeLeft, attemptId]);
+
+  // Auto-submit when time reaches 0 — handles both live countdown and expired-on-load
+  useEffect(() => {
+    if (timeLeft !== 0 || !attemptId || questions.length === 0) return;
+    void submitQuiz();
+  }, [timeLeft, attemptId, questions.length, submitQuiz]);
 
   const fmtTime = (s: number) => {
     const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
@@ -137,8 +169,9 @@ function TakeInner() {
           font-weight:600;text-transform:uppercase;}
         .cbt-header__right{background:rgba(255,255,255,.82);border-radius:20px;padding:18px;
           border:1px solid rgba(255,255,255,.95);display:grid;gap:14px;align-content:start;}
-        .cbt-timer{display:flex;align-items:baseline;justify-content:space-between;gap:12px;font-weight:600;}
-        .cbt-timer__value{font-size:24px;color:var(--cbt-accent);}
+        .cbt-timer{display:flex;align-items:center;gap:10px;font-weight:600;white-space:nowrap;}
+        .cbt-timer__label{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--cbt-muted);}
+        .cbt-timer__value{font-size:26px;color:var(--cbt-accent);letter-spacing:-.01em;}
         .cbt-progress__bar{height:8px;border-radius:999px;background:#efe8dd;overflow:hidden;}
         .cbt-progress__bar span{display:block;height:100%;border-radius:inherit;
           background:linear-gradient(90deg,var(--cbt-accent),var(--cbt-accent-2));}
@@ -214,7 +247,10 @@ function TakeInner() {
             </div>
           </div>
           <div className="cbt-header__right">
-            <div className="cbt-timer"><span>Time left</span><span className="cbt-timer__value">{fmtTime(timeLeft)}</span></div>
+            <div className="cbt-timer">
+              <span className="cbt-timer__label">Time left</span>
+              <span className="cbt-timer__value">{fmtTime(timeLeft)}</span>
+            </div>
             <div>
               <div className="cbt-progress__bar"><span style={{ width: `${pct}%` }} /></div>
               <div className="cbt-progress__meta"><span>{answered} answered</span><span>{questions.length - answered} remaining</span></div>

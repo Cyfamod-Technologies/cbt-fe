@@ -178,9 +178,9 @@ export function LiveMonitor() {
                   <th>Student</th>
                   <th>Quiz</th>
                   <th>Class / Subject</th>
-                  <th>Started</th>
-                  <th>Elapsed</th>
-                  <th>Time Remaining</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Started</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Elapsed</th>
+                  <th style={{ whiteSpace: "nowrap" }}>Time Remaining</th>
                 </tr>
               </thead>
               <tbody>
@@ -211,10 +211,12 @@ export function LiveMonitor() {
                           <div>{assessment ? assessmentClass(assessment) : "-"}</div>
                           <div className="text-muted small">{assessment ? assessmentSubject(assessment) : "-"}</div>
                         </td>
-                        <td>{formatDateTime(attempt.start_time)}</td>
-                        <td>{elapsedMinutes(attempt, now)}</td>
-                        <td>
-                          <span className={`badge ${remainingClass(remaining)}`}>{formatDuration(remaining)}</span>
+                        <td style={{ whiteSpace: "nowrap" }}>{formatDateTime(attempt.start_time)}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>{elapsedMinutes(attempt, now)}</td>
+                        <td style={{ whiteSpace: "nowrap" }}>
+                          <span className={`badge ${remainingClass(remaining)}`} style={{ fontSize: "0.85rem", padding: "4px 8px" }}>
+                            {formatDuration(remaining)}
+                          </span>
                         </td>
                       </tr>
                     );
