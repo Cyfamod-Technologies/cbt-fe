@@ -5,6 +5,8 @@ import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { studentAccess } from "@/lib/studentAuth";
 
+const SCHOOL_CODE = process.env.NEXT_PUBLIC_SCHOOL_CODE ?? "";
+
 const styles = `
 .student-login .student-cta {
   background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
@@ -48,7 +50,7 @@ function LoginInner() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/access";
 
-  const [form, setForm] = useState({ school_code: "", matric_no: "", name: "" });
+  const [form, setForm] = useState({ matric_no: "", name: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +59,7 @@ function LoginInner() {
     setLoading(true);
     setError(null);
     try {
-      await studentAccess(form);
+      await studentAccess({ school_code: SCHOOL_CODE, ...form });
       router.push(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to login.");
@@ -85,27 +87,15 @@ function LoginInner() {
         </div>
 
         <div className="login-box">
-          <div className="item-logo mb-4">
+          <div className="item-logo mb-4" style={{ textAlign: "center" }}>
             <Image src="/assets/img/logo2.png" alt="Cyfamod CBT" width={160} height={60} style={{ width: "auto", height: "auto" }} />
           </div>
           <h2>Student Access</h2>
           <p className="text-muted mb-4">
-            Enter your school code, matric number, and first name to continue.
+            Enter your matric number and first name to continue.
           </p>
           {error && <div className="alert alert-danger">{error}</div>}
-          <form onSubmit={handleSubmit}>
-            <div className="form-group mb-3">
-              <label htmlFor="school-code">School Code</label>
-              <input
-                id="school-code"
-                type="text"
-                className="form-control"
-                value={form.school_code}
-                onChange={(e) => setForm((f) => ({ ...f, school_code: e.target.value }))}
-                required
-                placeholder="e.g. CYFAMOD"
-              />
-            </div>
+          <form onSubmit={(e) => void handleSubmit(e)}>
             <div className="form-group mb-3">
               <label htmlFor="matric-no">Matric Number</label>
               <input
@@ -127,7 +117,7 @@ function LoginInner() {
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 required
-                placeholder="e.g. Demo"
+                placeholder="e.g. John"
               />
             </div>
             <button

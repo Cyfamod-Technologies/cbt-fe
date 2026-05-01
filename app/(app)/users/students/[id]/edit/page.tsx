@@ -1,15 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   getUser,
   listDepartments,
-  listLevels,
   updateUser,
   type Department,
-  type Level,
 } from "@/lib/academic";
 
 interface StudentForm {
@@ -41,7 +39,6 @@ export default function EditStudentPage() {
     status: "active",
   });
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [levels, setLevels] = useState<Level[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -49,10 +46,9 @@ export default function EditStudentPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [student, depts, lvls] = await Promise.all([
+      const [student, depts] = await Promise.all([
         getUser(studentId),
         listDepartments(),
-        listLevels(),
       ]);
       setForm({
         name: student.name ?? "",
@@ -66,13 +62,21 @@ export default function EditStudentPage() {
         status: student.status ?? "active",
       });
       setDepartments(depts);
-      setLevels(lvls);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load student.");
     } finally {
       setLoading(false);
     }
   }, [studentId]);
+
+  const availableLevels = useMemo(() => {
+    const dept = departments.find((d) => String(d.id) === form.department_id);
+    return dept?.levels ?? [];
+  }, [departments, form.department_id]);
+
+  const handleDeptChange = (value: string) => {
+    setForm((prev) => ({ ...prev, department_id: value, level_id: "" }));
+  };
 
   useEffect(() => { void load(); }, [load]);
 
@@ -179,7 +183,7 @@ export default function EditStudentPage() {
                 <select
                   className="form-control"
                   value={form.department_id}
-                  onChange={(e) => setField("department_id", e.target.value)}
+                  onChange={(e) => handleDeptChange(e.target.value)}
                 >
                   <option value="">Select Department</option>
                   {departments.map((d) => (
@@ -193,9 +197,14 @@ export default function EditStudentPage() {
                   className="form-control"
                   value={form.level_id}
                   onChange={(e) => setField("level_id", e.target.value)}
+                  disabled={!form.department_id || availableLevels.length === 0}
                 >
-                  <option value="">Select Level</option>
-                  {levels.map((l) => (
+                  <option value="">
+                    {form.department_id && availableLevels.length === 0
+                      ? "No levels assigned to this dept"
+                      : "Select Level"}
+                  </option>
+                  {availableLevels.map((l) => (
                     <option key={l.id} value={l.id}>{l.name}</option>
                   ))}
                 </select>

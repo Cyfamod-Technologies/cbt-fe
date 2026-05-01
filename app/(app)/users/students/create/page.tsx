@@ -1,14 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createUser,
   listDepartments,
-  listLevels,
   type Department,
-  type Level,
 } from "@/lib/academic";
 
 interface StudentForm {
@@ -39,15 +37,12 @@ export default function CreateStudentPage() {
   const router = useRouter();
   const [form, setForm] = useState<StudentForm>(initialForm);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [levels, setLevels] = useState<Level[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const loadOptions = useCallback(async () => {
     try {
-      const [depts, lvls] = await Promise.all([listDepartments(), listLevels()]);
-      setDepartments(depts);
-      setLevels(lvls);
+      setDepartments(await listDepartments());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load options.");
     }
@@ -55,8 +50,17 @@ export default function CreateStudentPage() {
 
   useEffect(() => { void loadOptions(); }, [loadOptions]);
 
+  const availableLevels = useMemo(() => {
+    const dept = departments.find((d) => String(d.id) === form.department_id);
+    return dept?.levels ?? [];
+  }, [departments, form.department_id]);
+
   const setField = (key: keyof StudentForm, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleDeptChange = (value: string) => {
+    setForm((prev) => ({ ...prev, department_id: value, level_id: "" }));
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -106,9 +110,7 @@ export default function CreateStudentPage() {
       </div>
 
       {error && (
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
+        <div className="alert alert-danger" role="alert">{error}</div>
       )}
 
       <div className="card height-auto">
@@ -155,7 +157,7 @@ export default function CreateStudentPage() {
                 <select
                   className="form-control"
                   value={form.department_id}
-                  onChange={(e) => setField("department_id", e.target.value)}
+                  onChange={(e) => handleDeptChange(e.target.value)}
                 >
                   <option value="">Select Department</option>
                   {departments.map((d) => (
@@ -169,9 +171,14 @@ export default function CreateStudentPage() {
                   className="form-control"
                   value={form.level_id}
                   onChange={(e) => setField("level_id", e.target.value)}
+                  disabled={!form.department_id || availableLevels.length === 0}
                 >
-                  <option value="">Select Level</option>
-                  {levels.map((l) => (
+                  <option value="">
+                    {form.department_id && availableLevels.length === 0
+                      ? "No levels assigned to this dept"
+                      : "Select Level"}
+                  </option>
+                  {availableLevels.map((l) => (
                     <option key={l.id} value={l.id}>{l.name}</option>
                   ))}
                 </select>

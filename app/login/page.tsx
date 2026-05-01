@@ -28,20 +28,18 @@ export default function LoginPage() {
           </div>
         )}
         <div className="login-box">
-          <div className="item-logo">
+          <div className="item-logo" style={{ textAlign: "center", marginBottom: 24 }}>
             <Image
-              src="/assets/img/logo2.png"
+              src="/assets/img/logo1.png"
               alt="Cyfamod CBT"
-              width={160}
-              height={60}
+              width={96}
+              height={96}
               priority
+              unoptimized
               style={{ width: "auto", height: "auto" }}
             />
           </div>
           <div className="text-center" style={{ marginBottom: 26 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 700, margin: "0 0 8px" }}>
-              Login to your account
-            </h1>
             <p className="text-muted" style={{ margin: 0, fontSize: 14 }}>
               Use your school account to access the CBT workspace.
             </p>
