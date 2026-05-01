@@ -715,7 +715,8 @@ export function DeptLevelCoursesPage() {
   };
 
   const assignDept = departments.find((d) => String(d.id) === assignDeptId);
-  const assignLevel = levels.find((l) => String(l.id) === assignLevelId);
+  const assignAvailableLevels = useMemo(() => assignDept?.levels ?? [], [assignDept]);
+  const assignLevel = assignAvailableLevels.find((l) => String(l.id) === assignLevelId);
 
   return (
     <AssignShell title="Courses to Dept/Level" current="Courses to Dept/Level">
@@ -736,7 +737,7 @@ export function DeptLevelCoursesPage() {
               <select
                 className="form-control"
                 value={assignDeptId}
-                onChange={(e) => { setAssignDeptId(e.target.value); setSelectedIds(new Set()); }}
+                onChange={(e) => { setAssignDeptId(e.target.value); setAssignLevelId(""); setSelectedIds(new Set()); }}
                 disabled={loading}
               >
                 <option value="">— Select Department —</option>
@@ -750,10 +751,12 @@ export function DeptLevelCoursesPage() {
                 className="form-control"
                 value={assignLevelId}
                 onChange={(e) => setAssignLevelId(e.target.value)}
-                disabled={loading}
+                disabled={loading || !assignDeptId || assignAvailableLevels.length === 0}
               >
-                <option value="">— All Levels —</option>
-                {levels.map((l) => (
+                <option value="">
+                  {assignDeptId && assignAvailableLevels.length === 0 ? "No levels in this dept" : "— All Levels —"}
+                </option>
+                {assignAvailableLevels.map((l) => (
                   <option key={l.id} value={l.id}>{l.name}</option>
                 ))}
               </select>
