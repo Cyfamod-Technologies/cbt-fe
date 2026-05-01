@@ -406,7 +406,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </button>
                 <ul className={`sub-group-menu ${showCbt ? "sub-group-active" : ""}`}>
                   {cbtLinks.map((item) => {
-                    const active = isRouteActive(item.href);
+                    const active =
+                      isRouteActive(item.href) &&
+                      !cbtLinks.some(
+                        (other) =>
+                          other.href !== item.href &&
+                          isRouteActive(other.href) &&
+                          other.href.startsWith(item.href),
+                      );
 
                     return (
                       <li className="nav-item" key={item.href}>

@@ -76,8 +76,11 @@ export function LecturerCourseAssignmentsPage() {
     semesterId: "",
     departmentId: "",
     levelId: "",
-    courseId: "",
+    courseId: "", // used only when editing a single assignment
   });
+  const [selectedCourseIds, setSelectedCourseIds] = useState<Set<number>>(new Set());
+  const [coursePickerSearch, setCoursePickerSearch] = useState("");
+  const [assigning, setAssigning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -86,24 +89,23 @@ export function LecturerCourseAssignmentsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [staff, sessions, semesters, departments, levels, courses, assignmentData] = await Promise.all([
+      const [staff, sessions, semesters, departments, courses, assignmentData] = await Promise.all([
         listStaff(),
         listSessions(),
         listSemesters(),
         listDepartments(),
-        listLevels(),
         listCourses(),
         listStaffCourseAssignments(),
       ]);
-      setOptions({ staff, sessions, semesters, departments, levels, courses });
+      setOptions({ staff, sessions, semesters, departments, levels: [], courses });
       setAssignments(assignmentData);
       setForm((current) => ({
         staffId: current.staffId || String(staff[0]?.id || ""),
         sessionId: current.sessionId || String(sessions[0]?.id || ""),
         semesterId: current.semesterId || String(semesters[0]?.id || ""),
-        departmentId: current.departmentId || String(departments[0]?.id || ""),
-        levelId: current.levelId || String(levels[0]?.id || ""),
-        courseId: current.courseId || String(courses[0]?.id || ""),
+        departmentId: current.departmentId || "",
+        levelId: current.levelId || "",
+        courseId: current.courseId || "",
       }));
       setFeedback(null);
     } catch (error) {
@@ -117,10 +119,21 @@ export function LecturerCourseAssignmentsPage() {
     void load();
   }, [load]);
 
-  const coursesForDepartment = useMemo(
-    () => options.courses.filter((course) => !form.departmentId || course.department_id === Number(form.departmentId)),
-    [form.departmentId, options.courses],
-  );
+  const availableLevels = useMemo(() => {
+    const dept = options.departments.find((d) => String(d.id) === form.departmentId);
+    return dept?.levels ?? [];
+  }, [options.departments, form.departmentId]);
+
+  const pickerCourses = useMemo(() => {
+    const q = coursePickerSearch.trim().toLowerCase();
+    const deptFiltered = form.departmentId
+      ? options.courses.filter((c) => c.department_id === Number(form.departmentId))
+      : options.courses;
+    if (!q) return deptFiltered;
+    return deptFiltered.filter((c) =>
+      [c.code, c.title, c.department?.name].filter(Boolean).join(" ").toLowerCase().includes(q),
+    );
+  }, [options.courses, form.departmentId, coursePickerSearch]);
 
   const filteredAssignments = useMemo(() => {
     const query = filters.search.trim().toLowerCase();
@@ -152,27 +165,62 @@ export function LecturerCourseAssignmentsPage() {
     });
   }, [assignments, filters]);
 
+  const handleDeptChange = (value: string) => {
+    setForm((prev) => ({ ...prev, departmentId: value, levelId: "" }));
+    setSelectedCourseIds(new Set());
+  };
+
+  const toggleCoursePick = (id: number) => {
+    setSelectedCourseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleAssign = async () => {
+    if (!form.staffId || !form.sessionId || !form.semesterId || !form.departmentId || selectedCourseIds.size === 0) return;
+    setAssigning(true);
+    setFeedback(null);
+    try {
+      await Promise.all(
+        [...selectedCourseIds].map((courseId) =>
+          createStaffCourseAssignment({
+            staff_id: Number(form.staffId),
+            session_id: Number(form.sessionId),
+            semester_id: Number(form.semesterId),
+            department_id: Number(form.departmentId),
+            level_id: form.levelId ? Number(form.levelId) : 0,
+            course_id: courseId,
+          }),
+        ),
+      );
+      setSelectedCourseIds(new Set());
+      setFeedback({ type: "success", message: `${selectedCourseIds.size} course${selectedCourseIds.size > 1 ? "s" : ""} assigned.` });
+      await load();
+    } catch (err) {
+      setFeedback(toDanger(err, "Failed to assign courses."));
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!editingId) return;
     await runAction(
       async () => {
-        const payload = {
+        await updateStaffCourseAssignment(editingId, {
           staff_id: Number(form.staffId),
           session_id: Number(form.sessionId),
           semester_id: Number(form.semesterId),
           department_id: Number(form.departmentId),
           level_id: Number(form.levelId),
           course_id: Number(form.courseId),
-        };
-
-        if (editingId) {
-          await updateStaffCourseAssignment(editingId, payload);
-          setEditingId(null);
-        } else {
-          await createStaffCourseAssignment(payload);
-        }
+        });
+        setEditingId(null);
       },
-      editingId ? "Lecturer course assignment updated." : "Lecturer course assignment created.",
+      "Lecturer course assignment updated.",
       load,
       setFeedback,
     );
@@ -188,6 +236,7 @@ export function LecturerCourseAssignmentsPage() {
       levelId: String(assignment.level_id),
       courseId: String(assignment.course_id),
     });
+    setSelectedCourseIds(new Set());
   };
 
   const cancelEdit = () => {
@@ -214,64 +263,142 @@ export function LecturerCourseAssignmentsPage() {
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
-          <FormCard title={editingId ? "Edit Lecturer to Course" : "Assign Lecturer to Course"} disabled={!canManageUsers} onSubmit={submit}>
-            <SelectField label="Staff" value={form.staffId} onChange={(value) => setFormField(setForm, "staffId", value)}>
-              <option value="">Select Staff</option>
-              {options.staff.map((staff) => (
-                <option key={staff.id} value={staff.id}>
-                  {staff.full_name} ({staff.staff_id})
-                </option>
-              ))}
-            </SelectField>
-            <SelectField label="Session" value={form.sessionId} onChange={(value) => setFormField(setForm, "sessionId", value)}>
-              <option value="">Select Session</option>
-              {options.sessions.map((session) => (
-                <option key={session.id} value={session.id}>
-                  {session.name}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField label="Semester" value={form.semesterId} onChange={(value) => setFormField(setForm, "semesterId", value)}>
-              <option value="">Select Semester</option>
-              {options.semesters.map((semester) => (
-                <option key={semester.id} value={semester.id}>
-                  {semester.name}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField label="Department" value={form.departmentId} onChange={(value) => setFormField(setForm, "departmentId", value)}>
-              <option value="">Select Department</option>
-              {options.departments.map((department) => (
-                <option key={department.id} value={department.id}>
-                  {department.name}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField label="Level" value={form.levelId} onChange={(value) => setFormField(setForm, "levelId", value)}>
-              <option value="">Select Level</option>
-              {options.levels.map((level) => (
-                <option key={level.id} value={level.id}>
-                  {level.name}
-                </option>
-              ))}
-            </SelectField>
-            <SelectField label="Course" value={form.courseId} onChange={(value) => setFormField(setForm, "courseId", value)}>
-              <option value="">Select Course</option>
-              {coursesForDepartment.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.code} - {course.title}
-                </option>
-              ))}
-            </SelectField>
-            <button type="submit" className="btn btn-primary mt-3">
-              {editingId ? "Update Assignment" : "Assign Course"}
-            </button>
-            {editingId ? (
-              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelEdit}>
-                Cancel Edit
-              </button>
-            ) : null}
-          </FormCard>
+          {editingId ? (
+            <FormCard title="Edit Lecturer to Course" disabled={!canManageUsers} onSubmit={submit}>
+              <SelectField label="Staff" value={form.staffId} onChange={(value) => setFormField(setForm, "staffId", value)}>
+                <option value="">Select Staff</option>
+                {options.staff.map((staff) => (
+                  <option key={staff.id} value={staff.id}>{staff.full_name} ({staff.staff_id})</option>
+                ))}
+              </SelectField>
+              <SelectField label="Session" value={form.sessionId} onChange={(value) => setFormField(setForm, "sessionId", value)}>
+                <option value="">Select Session</option>
+                {options.sessions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </SelectField>
+              <SelectField label="Semester" value={form.semesterId} onChange={(value) => setFormField(setForm, "semesterId", value)}>
+                <option value="">Select Semester</option>
+                {options.semesters.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </SelectField>
+              <SelectField label="Department" value={form.departmentId} onChange={handleDeptChange}>
+                <option value="">Select Department</option>
+                {options.departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </SelectField>
+              <SelectField label="Level" value={form.levelId} onChange={(value) => setFormField(setForm, "levelId", value)}>
+                <option value="">Select Level</option>
+                {availableLevels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </SelectField>
+              <SelectField label="Course" value={form.courseId} onChange={(value) => setFormField(setForm, "courseId", value)}>
+                <option value="">Select Course</option>
+                {options.courses
+                  .filter((c) => !form.departmentId || c.department_id === Number(form.departmentId))
+                  .map((c) => <option key={c.id} value={c.id}>{c.code} - {c.title}</option>)}
+              </SelectField>
+              <button type="submit" className="btn btn-primary mt-3">Update Assignment</button>
+              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelEdit}>Cancel</button>
+            </FormCard>
+          ) : (
+            <>
+              {/* Assign panel */}
+              <div className="card height-auto mb-4">
+                <div className="card-body">
+                  <div className="heading-layout1 mb-0">
+                    <div className="item-title"><h3>Assign Lecturer to Course</h3></div>
+                  </div>
+                  <SelectField label="Staff *" value={form.staffId} onChange={(value) => setFormField(setForm, "staffId", value)}>
+                    <option value="">Select Staff</option>
+                    {options.staff.map((s) => <option key={s.id} value={s.id}>{s.full_name} ({s.staff_id})</option>)}
+                  </SelectField>
+                  <SelectField label="Session *" value={form.sessionId} onChange={(value) => setFormField(setForm, "sessionId", value)}>
+                    <option value="">Select Session</option>
+                    {options.sessions.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </SelectField>
+                  <SelectField label="Semester *" value={form.semesterId} onChange={(value) => setFormField(setForm, "semesterId", value)}>
+                    <option value="">Select Semester</option>
+                    {options.semesters.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </SelectField>
+                  <SelectField label="Department *" value={form.departmentId} onChange={handleDeptChange}>
+                    <option value="">Select Department</option>
+                    {options.departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </SelectField>
+                  <label className="mt-3">Level</label>
+                  <select
+                    className="form-control"
+                    value={form.levelId}
+                    onChange={(e) => setFormField(setForm, "levelId", e.target.value)}
+                    disabled={!form.departmentId || availableLevels.length === 0}
+                  >
+                    <option value="">
+                      {form.departmentId && availableLevels.length === 0 ? "No levels in this dept" : "Select Level"}
+                    </option>
+                    {availableLevels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Course picker */}
+              <div className="card height-auto mb-4">
+                <div className="card-body">
+                  <div className="heading-layout1 mb-0">
+                    <div className="item-title">
+                      <h3>Select Courses</h3>
+                      <p className="mb-0 text-muted small">Pick one or more courses to assign.</p>
+                    </div>
+                    {selectedCourseIds.size > 0 && (
+                      <span className="badge badge-primary">{selectedCourseIds.size} selected</span>
+                    )}
+                  </div>
+                  <input
+                    className="form-control mt-3"
+                    placeholder="Search courses..."
+                    value={coursePickerSearch}
+                    onChange={(e) => setCoursePickerSearch(e.target.value)}
+                  />
+                  <div className="mt-2" style={{ maxHeight: 260, overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: 6 }}>
+                    {loading ? (
+                      <div className="p-3 text-muted small">Loading...</div>
+                    ) : pickerCourses.length === 0 ? (
+                      <div className="p-3 text-muted small">No courses found.</div>
+                    ) : (
+                      pickerCourses.map((c) => (
+                        <label key={c.id} className="d-flex align-items-start p-2 mb-0" style={{ cursor: "pointer", borderBottom: "1px solid #f0f0f0", gap: 8 }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedCourseIds.has(c.id)}
+                            onChange={() => toggleCoursePick(c.id)}
+                            style={{ marginTop: 3, flexShrink: 0 }}
+                          />
+                          <span>
+                            <span className="font-weight-bold">{c.code}</span>
+                            <span className="text-muted"> — {c.title}</span>
+                            {c.department && (
+                              <span className="d-block text-muted" style={{ fontSize: "0.75rem" }}>
+                                {c.department.name}{c.level ? ` / ${c.level.name}` : ""}
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                  <div className="d-flex gap-2 mt-3">
+                    {selectedCourseIds.size > 0 && (
+                      <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setSelectedCourseIds(new Set())}>
+                        Clear
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark"
+                      disabled={!canManageUsers || assigning || !form.staffId || !form.sessionId || !form.semesterId || !form.departmentId || selectedCourseIds.size === 0}
+                      onClick={() => void handleAssign()}
+                    >
+                      {assigning ? "Assigning..." : `Assign${selectedCourseIds.size > 0 ? ` (${selectedCourseIds.size})` : ""} →`}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
         <div className="col-lg-8 col-12">
           <AssignmentSummary

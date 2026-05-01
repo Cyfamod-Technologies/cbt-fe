@@ -1,18 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  getSchoolSettings,
   listCourses,
   listDepartments,
-  listLevels,
   listSemesters,
   listSessions,
   type AcademicSession,
   type Course,
   type Department,
-  type Level,
   type Semester,
 } from "@/lib/academic";
 import { createAssessment, getAssessment, updateAssessment, type Assessment, type CreateAssessmentPayload } from "@/lib/cbt";
@@ -74,8 +73,9 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
   const [semesters, setSemesters] = useState<Semester[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [levels, setLevels] = useState<Level[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<number | null>(null);
+  const [currentSemesterId, setCurrentSemesterId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,20 +86,21 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
       setError(null);
 
       try {
-        const [sessionData, semesterData, departmentData, levelData, courseData, assessment] = await Promise.all([
+        const [sessionData, semesterData, departmentData, courseData, settings, assessment] = await Promise.all([
           listSessions(),
           listSemesters(),
           listDepartments(),
-          listLevels(),
           listCourses(),
+          getSchoolSettings(),
           assessmentId ? getAssessment(assessmentId) : Promise.resolve(null as Assessment | null),
         ]);
 
         setSessions(sessionData);
         setSemesters(semesterData);
         setDepartments(departmentData);
-        setLevels(levelData);
         setCourses(courseData);
+        setCurrentSessionId(settings.current_session_id);
+        setCurrentSemesterId(settings.current_semester_id);
 
         if (assessment) {
           setForm({
@@ -123,6 +124,13 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
             allow_multiple_attempts: assessment.allow_multiple_attempts ?? true,
             max_attempts: String(assessment.max_attempts || 1),
           });
+        } else {
+          // Auto-select current session and semester for new assessments
+          setForm((prev) => ({
+            ...prev,
+            session_id: settings.current_session_id ? String(settings.current_session_id) : "",
+            semester_id: settings.current_semester_id ? String(settings.current_semester_id) : "",
+          }));
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load quiz form.");
@@ -134,8 +142,33 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
     void load();
   }, [assessmentId]);
 
+  const availableLevels = useMemo(() => {
+    const dept = departments.find((d) => String(d.id) === form.department_id);
+    return dept?.levels ?? [];
+  }, [departments, form.department_id]);
+
+  const availableCourses = useMemo(() => {
+    return courses.filter((c) => {
+      if (form.department_id && c.department_id !== Number(form.department_id)) return false;
+      if (form.level_id && c.level_id != null && c.level_id !== Number(form.level_id)) return false;
+      return true;
+    });
+  }, [courses, form.department_id, form.level_id]);
+
   const update = (key: keyof typeof form, value: string | boolean) => {
     setForm((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleDeptChange = (value: string) => {
+    setForm((prev) => ({ ...prev, department_id: value, level_id: "", course_id: "" }));
+  };
+
+  const handleAllowMultipleAttemptsChange = (checked: boolean) => {
+    setForm((prev) => ({
+      ...prev,
+      allow_multiple_attempts: checked,
+      max_attempts: checked ? prev.max_attempts : "1",
+    }));
   };
 
   const payload = (): CreateAssessmentPayload => ({
@@ -225,7 +258,9 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
                     <select className="form-control" value={form.session_id} onChange={(event) => update("session_id", event.target.value)} required>
                       <option value="">Select session</option>
                       {sessions.map((session) => (
-                        <option key={session.id} value={session.id}>{session.name}</option>
+                        <option key={session.id} value={session.id}>
+                          {session.name}{session.id === currentSessionId ? " (Current)" : ""}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -236,7 +271,9 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
                     <select className="form-control" value={form.semester_id} onChange={(event) => update("semester_id", event.target.value)} required>
                       <option value="">Select semester</option>
                       {semesters.map((semester) => (
-                        <option key={semester.id} value={semester.id}>{semester.name}</option>
+                        <option key={semester.id} value={semester.id}>
+                          {semester.name}{semester.id === currentSemesterId ? " (Current)" : ""}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -244,7 +281,7 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
                 <div className="col-lg-3 col-md-6">
                   <div className="form-group">
                     <label>Class / Department</label>
-                    <select className="form-control" value={form.department_id} onChange={(event) => update("department_id", event.target.value)} required>
+                    <select className="form-control" value={form.department_id} onChange={(event) => handleDeptChange(event.target.value)} required>
                       <option value="">Select department</option>
                       {departments.map((department) => (
                         <option key={department.id} value={department.id}>{department.name}</option>
@@ -255,9 +292,16 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
                 <div className="col-lg-3 col-md-6">
                   <div className="form-group">
                     <label>Level</label>
-                    <select className="form-control" value={form.level_id} onChange={(event) => update("level_id", event.target.value)}>
-                      <option value="">All levels</option>
-                      {levels.map((level) => (
+                    <select
+                      className="form-control"
+                      value={form.level_id}
+                      onChange={(event) => setForm((prev) => ({ ...prev, level_id: event.target.value, course_id: "" }))}
+                      disabled={!form.department_id || availableLevels.length === 0}
+                    >
+                      <option value="">
+                        {form.department_id && availableLevels.length === 0 ? "No levels in this dept" : "All levels"}
+                      </option>
+                      {availableLevels.map((level) => (
                         <option key={level.id} value={level.id}>{level.name}</option>
                       ))}
                     </select>
@@ -268,7 +312,7 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
                     <label>Subject / Course</label>
                     <select className="form-control" value={form.course_id} onChange={(event) => update("course_id", event.target.value)}>
                       <option value="">General</option>
-                      {courses.map((course) => (
+                      {availableCourses.map((course) => (
                         <option key={course.id} value={course.id}>{course.code} - {course.title}</option>
                       ))}
                     </select>
@@ -301,19 +345,26 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
               </div>
 
               <div className="cbt-switch-grid">
-                {[
+                {([
                   ["show_answers", "Show answers after submission"],
                   ["show_score", "Show score after submission"],
                   ["shuffle_questions", "Shuffle questions"],
                   ["shuffle_options", "Shuffle options"],
                   ["allow_review", "Allow review"],
-                  ["allow_multiple_attempts", "Allow multiple attempts"],
-                ].map(([key, label]) => (
+                ] as [keyof typeof form, string][]).map(([key, label]) => (
                   <label className="cbt-switch" key={key}>
-                    <input type="checkbox" checked={Boolean(form[key as keyof typeof form])} onChange={(event) => update(key as keyof typeof form, event.target.checked)} />
+                    <input type="checkbox" checked={Boolean(form[key])} onChange={(event) => update(key, event.target.checked)} />
                     <span>{label}</span>
                   </label>
                 ))}
+                <label className="cbt-switch">
+                  <input
+                    type="checkbox"
+                    checked={form.allow_multiple_attempts}
+                    onChange={(event) => handleAllowMultipleAttemptsChange(event.target.checked)}
+                  />
+                  <span>Allow multiple attempts</span>
+                </label>
               </div>
 
               <div className="cbt-actions mg-t-20">
