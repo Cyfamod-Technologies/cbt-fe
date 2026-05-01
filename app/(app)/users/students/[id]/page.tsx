@@ -43,23 +43,22 @@ export default function StudentDetailPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [studentData, students, courses, enrollmentData, schoolSettings] = await Promise.all([
+      const [studentData, courses, schoolSettings] = await Promise.all([
         getUser(studentId),
-        listUsers("student"),
         listCourses(),
-        listStudentCourseEnrollments(studentId),
         getSchoolSettings(),
       ]);
       setStudent(studentData);
-      setAllStudents(students);
       setAllCourses(courses);
-      setEnrollments(enrollmentData);
       setSettings(schoolSettings);
     } catch (err) {
       setFeedback({ type: "danger", message: err instanceof Error ? err.message : "Failed to load student." });
     } finally {
       setLoading(false);
     }
+    // Load nav list and enrollments separately — non-fatal if they fail
+    listUsers("student").then(setAllStudents).catch(() => null);
+    listStudentCourseEnrollments(studentId).then(setEnrollments).catch(() => null);
   }, [studentId]);
 
   useEffect(() => { void load(); }, [load]);
@@ -130,9 +129,14 @@ export default function StudentDetailPage() {
 
   if (!student) {
     return (
-      <div className="card height-auto">
-        <div className="card-body text-muted">Student not found.</div>
-      </div>
+      <>
+        {feedback && (
+          <div className={`alert alert-${feedback.type}`} role="alert">{feedback.message}</div>
+        )}
+        <div className="card height-auto">
+          <div className="card-body text-muted">Student not found.</div>
+        </div>
+      </>
     );
   }
 
