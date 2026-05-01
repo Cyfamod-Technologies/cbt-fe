@@ -18,6 +18,7 @@ const navigation = [
 const managementLinks = [
   { label: "Session", href: "/management/sessions" },
   { label: "Semesters", href: "/management/semesters" },
+  { label: "Levels", href: "/management/levels" },
   { label: "Departments", href: "/management/departments" },
   { label: "Courses", href: "/management/courses" },
 ] as const;

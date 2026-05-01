@@ -6,13 +6,16 @@ import {
   addDepartmentLevel,
   createCourse,
   createDepartment,
+  createLevel,
   createSemester,
   createSession,
   getSchoolSettings,
   listCourses,
   listDepartments,
+  listLevels,
   listSemesters,
   listSessions,
+  removeDepartmentLevel,
   setCurrentSemester,
   setCurrentSession,
   updateCourse,
@@ -345,10 +348,13 @@ export function SemestersManagementPage() {
 export function DepartmentsManagementPage() {
   const { user } = useAuth();
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [allLevels, setAllLevels] = useState<Level[]>([]);
   const [form, setForm] = useState({ name: "", code: "", status: "active" });
-  const [levelForm, setLevelForm] = useState({ departmentId: "", name: "", status: "active" });
   const [editingDepartmentId, setEditingDepartmentId] = useState<number | null>(null);
   const [editingLevelId, setEditingLevelId] = useState<number | null>(null);
+  const [levelEditForm, setLevelEditForm] = useState({ name: "", status: "active" });
+  const [assignLevelId, setAssignLevelId] = useState("");
+  const [assigning, setAssigning] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -357,7 +363,9 @@ export function DepartmentsManagementPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setDepartments(await listDepartments());
+      const [depts, levels] = await Promise.all([listDepartments(), listLevels()]);
+      setDepartments(depts);
+      setAllLevels(levels);
     } catch (error) {
       setFeedback(toDanger(error, "Unable to load departments."));
     } finally {
@@ -365,9 +373,11 @@ export function DepartmentsManagementPage() {
     }
   }, []);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useEffect(() => { void load(); }, [load]);
+
+  const editingDept = departments.find((d) => d.id === editingDepartmentId);
+  const assignedIds = new Set(editingDept?.levels?.map((l) => l.id) ?? []);
+  const unassignedLevels = allLevels.filter((l) => !assignedIds.has(l.id));
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -380,10 +390,7 @@ export function DepartmentsManagementPage() {
             status: form.status,
           });
         } else {
-          await createDepartment({
-            name: form.name.trim(),
-            code: form.code.trim() || undefined,
-          });
+          await createDepartment({ name: form.name.trim(), code: form.code.trim() || undefined });
         }
         setForm({ name: "", code: "", status: "active" });
         setEditingDepartmentId(null);
@@ -394,22 +401,41 @@ export function DepartmentsManagementPage() {
     );
   };
 
-  const submitLevel = async (event: FormEvent) => {
+  const handleAssignLevel = async () => {
+    if (!editingDepartmentId || !assignLevelId) return;
+    setAssigning(true);
+    try {
+      await addDepartmentLevel(editingDepartmentId, { level_id: Number(assignLevelId) });
+      setAssignLevelId("");
+      await load();
+      setFeedback({ type: "success", message: "Level assigned to department." });
+    } catch (err) {
+      setFeedback(toDanger(err, "Failed to assign level."));
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleRemoveLevel = async (levelId: number) => {
+    if (!editingDepartmentId) return;
+    await runAction(
+      async () => { await removeDepartmentLevel(editingDepartmentId, levelId); },
+      "Level removed from department.",
+      load,
+      setFeedback,
+    );
+  };
+
+  const submitLevelEdit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!editingLevelId) return;
     await runAction(
       async () => {
-        if (editingLevelId) {
-          await updateLevel(editingLevelId, {
-            name: levelForm.name.trim(),
-            status: levelForm.status,
-          });
-        } else {
-          await addDepartmentLevel(Number(levelForm.departmentId), { name: levelForm.name.trim() });
-        }
-        setLevelForm({ departmentId: editingLevelId ? "" : levelForm.departmentId, name: "", status: "active" });
+        await updateLevel(editingLevelId, { name: levelEditForm.name.trim(), status: levelEditForm.status });
         setEditingLevelId(null);
+        setLevelEditForm({ name: "", status: "active" });
       },
-      editingLevelId ? "Level updated." : "Level added to department.",
+      "Level updated.",
       load,
       setFeedback,
     );
@@ -417,16 +443,9 @@ export function DepartmentsManagementPage() {
 
   const startEdit = (department: Department) => {
     setEditingDepartmentId(department.id);
-    setForm({
-      name: department.name,
-      code: department.code || "",
-      status: department.status,
-    });
-    setLevelForm({
-      departmentId: String(department.id),
-      name: "",
-      status: "active",
-    });
+    setForm({ name: department.name, code: department.code || "", status: department.status });
+    setAssignLevelId("");
+    setEditingLevelId(null);
     setEditMode(true);
   };
 
@@ -434,22 +453,13 @@ export function DepartmentsManagementPage() {
     setEditingDepartmentId(null);
     setEditingLevelId(null);
     setForm({ name: "", code: "", status: "active" });
-    setLevelForm({ departmentId: "", name: "", status: "active" });
+    setAssignLevelId("");
     setEditMode(false);
   };
 
-  const startLevelEdit = (department: Department, level: Level) => {
+  const startLevelEdit = (level: Level) => {
     setEditingLevelId(level.id);
-    setLevelForm({
-      departmentId: String(department.id),
-      name: level.name,
-      status: level.status,
-    });
-  };
-
-  const cancelLevelEdit = () => {
-    setEditingLevelId(null);
-    setLevelForm({ departmentId: editingDepartmentId ? String(editingDepartmentId) : "", name: "", status: "active" });
+    setLevelEditForm({ name: level.name, status: level.status });
   };
 
   return (
@@ -461,93 +471,105 @@ export function DepartmentsManagementPage() {
             <div className="card height-auto mb-4">
               <div className="card-body">
                 <div className="heading-layout1">
-                  <div className="item-title">
-                    <h3>Edit Department & Levels</h3>
-                  </div>
-                  <button type="button" className="btn btn-sm btn-outline-secondary" onClick={cancelEdit}>
-                    Close
-                  </button>
+                  <div className="item-title"><h3>Edit Department & Levels</h3></div>
+                  <button type="button" className="btn btn-sm btn-outline-secondary" onClick={cancelEdit}>Close</button>
                 </div>
                 <div className="row">
-                  <div className="col-lg-6 col-12">
+                  {/* Department details */}
+                  <div className="col-lg-4 col-12">
                     <form className="new-added-form" onSubmit={submit}>
                       <fieldset disabled={!canManageCatalog}>
                         <h4 className="mb-3">Department Details</h4>
                         <label>Department Name</label>
-                        <input
-                          className="form-control"
-                          placeholder="Computer Science"
-                          value={form.name}
-                          onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                          required
-                        />
+                        <input className="form-control" value={form.name} onChange={(e) => setForm((c) => ({ ...c, name: e.target.value }))} required />
                         <label className="mt-3">Department Code</label>
-                        <input
-                          className="form-control"
-                          placeholder="CSC"
-                          value={form.code}
-                          onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
-                        />
+                        <input className="form-control" placeholder="CSC" value={form.code} onChange={(e) => setForm((c) => ({ ...c, code: e.target.value }))} />
                         <label className="mt-3">Status</label>
-                        <select
-                          className="form-control"
-                          value={form.status}
-                          onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
-                        >
+                        <select className="form-control" value={form.status} onChange={(e) => setForm((c) => ({ ...c, status: e.target.value }))}>
                           <option value="active">Active</option>
                           <option value="inactive">Inactive</option>
                         </select>
-                        <button type="submit" className="btn btn-primary mt-3">
-                          Update Department
-                        </button>
+                        <button type="submit" className="btn btn-primary mt-3">Update Department</button>
                       </fieldset>
                     </form>
                   </div>
-                  <div className="col-lg-6 col-12">
-                    <form className="new-added-form" onSubmit={submitLevel}>
-                      <fieldset disabled={!canManageCatalog}>
-                        <h4 className="mb-3">{editingLevelId ? "Edit Level" : "Add New Level"}</h4>
-                        <label className="mt-3">Level Name</label>
-                        <input
-                          className="form-control"
-                          placeholder="ND I"
-                          value={levelForm.name}
-                          onChange={(event) => setLevelForm((current) => ({ ...current, name: event.target.value }))}
-                          required
-                        />
-                        <label className="mt-3">Status</label>
-                        <select
-                          className="form-control"
-                          value={levelForm.status}
-                          onChange={(event) => setLevelForm((current) => ({ ...current, status: event.target.value }))}
-                        >
-                          <option value="active">Active</option>
-                          <option value="inactive">Inactive</option>
-                        </select>
-                        <button type="submit" className="btn btn-primary mt-3">
-                          {editingLevelId ? "Update Level" : "Add Level"}
-                        </button>
-                        {editingLevelId ? (
-                          <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelLevelEdit}>
-                            Cancel
-                          </button>
-                        ) : null}
-                      </fieldset>
-                    </form>
-                    <div className="mt-4">
-                      <h5>Current Levels</h5>
-                      <div className="department-level-list mt-2">
-                        {departments.find((d) => d.id === editingDepartmentId)?.levels?.map((level) => (
+
+                  {/* Assigned levels + assign picker */}
+                  <div className="col-lg-4 col-12">
+                    <h4 className="mb-3">Assigned Levels</h4>
+                    <div className="department-level-list mb-3">
+                      {editingDept?.levels?.length ? (
+                        editingDept.levels.map((level) => (
                           <span className="department-level-chip" key={level.id}>
                             <span>{level.name}</span>
-                            <button type="button" disabled={!canManageCatalog} onClick={() => startLevelEdit(departments.find((d) => d.id === editingDepartmentId)!, level)}>
-                              Edit
-                            </button>
+                            {canManageCatalog && (
+                              <>
+                                <button type="button" onClick={() => startLevelEdit(level)}>Edit</button>
+                                <button type="button" style={{ color: "#ef4444" }} onClick={() => void handleRemoveLevel(level.id)}>✕</button>
+                              </>
+                            )}
                           </span>
-                        )) || <span className="text-muted">No levels</span>}
-                      </div>
+                        ))
+                      ) : (
+                        <span className="text-muted small">No levels assigned.</span>
+                      )}
                     </div>
+
+                    <h5 className="mt-3">Assign a Level</h5>
+                    <div className="d-flex gap-2 mt-2">
+                      <select
+                        className="form-control"
+                        value={assignLevelId}
+                        onChange={(e) => setAssignLevelId(e.target.value)}
+                        disabled={!canManageCatalog || unassignedLevels.length === 0}
+                      >
+                        <option value="">{unassignedLevels.length === 0 ? "All levels assigned" : "— Select Level —"}</option>
+                        {unassignedLevels.map((l) => (
+                          <option key={l.id} value={l.id}>{l.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        disabled={!canManageCatalog || !assignLevelId || assigning}
+                        onClick={() => void handleAssignLevel()}
+                      >
+                        {assigning ? "..." : "Assign"}
+                      </button>
+                    </div>
+                    <p className="text-muted small mt-2">
+                      Manage levels globally from <Link href="/management/levels">Levels page</Link>.
+                    </p>
                   </div>
+
+                  {/* Edit level form (shown when editing a level) */}
+                  {editingLevelId && (
+                    <div className="col-lg-4 col-12">
+                      <form className="new-added-form" onSubmit={submitLevelEdit}>
+                        <fieldset disabled={!canManageCatalog}>
+                          <h4 className="mb-3">Edit Level</h4>
+                          <label>Level Name</label>
+                          <input
+                            className="form-control"
+                            value={levelEditForm.name}
+                            onChange={(e) => setLevelEditForm((c) => ({ ...c, name: e.target.value }))}
+                            required
+                          />
+                          <label className="mt-3">Status</label>
+                          <select
+                            className="form-control"
+                            value={levelEditForm.status}
+                            onChange={(e) => setLevelEditForm((c) => ({ ...c, status: e.target.value }))}
+                          >
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                          </select>
+                          <button type="submit" className="btn btn-primary mt-3">Update Level</button>
+                          <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={() => setEditingLevelId(null)}>Cancel</button>
+                        </fieldset>
+                      </form>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -556,23 +578,10 @@ export function DepartmentsManagementPage() {
           <div className="col-lg-4 col-12">
             <FormCard title="Create Department" onSubmit={submit} disabled={!canManageCatalog}>
               <label>Department Name</label>
-              <input
-                className="form-control"
-                placeholder="Computer Science"
-                value={form.name}
-                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                required
-              />
+              <input className="form-control" placeholder="Computer Science" value={form.name} onChange={(e) => setForm((c) => ({ ...c, name: e.target.value }))} required />
               <label className="mt-3">Department Code</label>
-              <input
-                className="form-control"
-                placeholder="CSC"
-                value={form.code}
-                onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
-              />
-              <button type="submit" className="btn btn-primary mt-3">
-                Save Department
-              </button>
+              <input className="form-control" placeholder="CSC" value={form.code} onChange={(e) => setForm((c) => ({ ...c, code: e.target.value }))} />
+              <button type="submit" className="btn btn-primary mt-3">Save Department</button>
             </FormCard>
           </div>
         )}
@@ -584,12 +593,7 @@ export function DepartmentsManagementPage() {
             rows={departments.map((department) => [
               department.name,
               department.code || "",
-              <LevelChips
-                key="levels"
-                department={department}
-                canManage={false}
-                onEdit={startLevelEdit}
-              />,
+              <LevelChips key="levels" department={department} />,
               department.status,
               <button
                 key={`edit-${department.id}`}
@@ -598,7 +602,7 @@ export function DepartmentsManagementPage() {
                 disabled={!canManageCatalog}
                 onClick={() => startEdit(department)}
               >
-                Edit Dept & Levels
+                Edit
               </button>,
             ])}
           />
@@ -729,15 +733,111 @@ export function CoursesManagementPage() {
   );
 }
 
-function LevelChips({
-  department,
-  canManage,
-  onEdit,
-}: {
-  department: Department;
-  canManage: boolean;
-  onEdit: (department: Department, level: Level) => void;
-}) {
+export function LevelsManagementPage() {
+  const { user } = useAuth();
+  const [levels, setLevels] = useState<Level[]>([]);
+  const [form, setForm] = useState({ name: "", status: "active" });
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setLevels(await listLevels());
+    } catch (error) {
+      setFeedback(toDanger(error, "Unable to load levels."));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void load(); }, [load]);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    await runAction(
+      async () => {
+        if (editingId) {
+          await updateLevel(editingId, { name: form.name.trim(), status: form.status });
+        } else {
+          await createLevel({ name: form.name.trim() });
+        }
+        setForm({ name: "", status: "active" });
+        setEditingId(null);
+      },
+      editingId ? "Level updated." : "Level created.",
+      load,
+      setFeedback,
+    );
+  };
+
+  const startEdit = (level: Level) => {
+    setEditingId(level.id);
+    setForm({ name: level.name, status: level.status });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm({ name: "", status: "active" });
+  };
+
+  return (
+    <ManagementShell title="Levels" current="Levels">
+      <FeedbackAlert feedback={feedback} />
+      <div className="row">
+        <div className="col-lg-4 col-12">
+          <FormCard title={editingId ? "Edit Level" : "Create Level"} onSubmit={submit} disabled={!canManageCatalog}>
+            <label>Level Name</label>
+            <input
+              className="form-control"
+              placeholder="e.g. 100 Level, ND I"
+              value={form.name}
+              onChange={(e) => setForm((c) => ({ ...c, name: e.target.value }))}
+              required
+            />
+            <label className="mt-3">Status</label>
+            <select className="form-control" value={form.status} onChange={(e) => setForm((c) => ({ ...c, status: e.target.value }))}>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+            <button type="submit" className="btn btn-primary mt-3">
+              {editingId ? "Update Level" : "Save Level"}
+            </button>
+            {editingId && (
+              <button type="button" className="btn btn-outline-secondary mt-3 ml-2" onClick={cancelEdit}>
+                Cancel
+              </button>
+            )}
+          </FormCard>
+        </div>
+        <div className="col-lg-8 col-12">
+          <TableCard
+            title="All Levels"
+            loading={loading}
+            headers={["Name", "Status", "Action"]}
+            rows={levels.map((level) => [
+              level.name,
+              level.status,
+              <button
+                key={`edit-${level.id}`}
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                disabled={!canManageCatalog}
+                onClick={() => startEdit(level)}
+              >
+                Edit
+              </button>,
+            ])}
+          />
+        </div>
+      </div>
+    </ManagementShell>
+  );
+}
+
+function LevelChips({ department }: { department: Department }) {
   const levels = department.levels ?? [];
 
   if (levels.length === 0) {
@@ -749,11 +849,6 @@ function LevelChips({
       {levels.map((level) => (
         <span className="department-level-chip" key={level.id}>
           <span>{level.name}</span>
-          {canManage ? (
-            <button type="button" onClick={() => onEdit(department, level)}>
-              Edit
-            </button>
-          ) : null}
         </span>
       ))}
     </div>
