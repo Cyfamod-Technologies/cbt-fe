@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import Image from "next/image";
+// import Image from "next/image";
 import Link from "next/link";
 import { LoginForm } from "./login-form";
 
@@ -28,7 +28,7 @@ export default function LoginPage() {
           </div>
         )}
         <div className="login-box">
-          <div className="item-logo" style={{ textAlign: "center", marginBottom: 24 }}>
+          {/* <div className="item-logo" style={{ textAlign: "center", marginBottom: 24 }}>
             <Image
               src="/assets/img/logo1.png"
               alt="Cyfamod CBT"
@@ -38,8 +38,9 @@ export default function LoginPage() {
               unoptimized
               style={{ width: "auto", height: "auto" }}
             />
-          </div>
+          </div> */}
           <div className="text-center" style={{ marginBottom: 26 }}>
+            <h2 className="font-weight-bold" style={{ marginBottom: 8 }}>CYFAMOD CBT</h2>
             <p className="text-muted" style={{ margin: 0, fontSize: 14 }}>
               Use your school account to access the CBT workspace.
             </p>

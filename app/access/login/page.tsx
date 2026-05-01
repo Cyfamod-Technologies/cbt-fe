@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+// import Image from "next/image";
 import { FormEvent, Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { studentAccess } from "@/lib/studentAuth";
@@ -87,8 +87,11 @@ function LoginInner() {
         </div>
 
         <div className="login-box">
-          <div className="item-logo mb-4" style={{ textAlign: "center" }}>
+          {/* <div className="item-logo mb-4" style={{ textAlign: "center" }}>
             <Image src="/assets/img/logo2.png" alt="Cyfamod CBT" width={160} height={60} style={{ width: "auto", height: "auto" }} />
+          </div> */}
+          <div className="text-center mb-3">
+            <h2 className="font-weight-bold" style={{ marginBottom: 4 }}>CYFAMOD CBT</h2>
           </div>
           <h2>Student Access</h2>
           <p className="text-muted mb-4">
