@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { FormEvent, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  createCourse,
   updateCourse,
   createStaffCourseAssignment,
   createStaffExamOfficer,
@@ -587,8 +586,6 @@ export function ExamOfficerAssignmentsPage() {
   );
 }
 
-type AddRow = { code: string; title: string };
-
 export function DeptLevelCoursesPage() {
   const { user } = useAuth();
   const canManage = Boolean(user?.capabilities?.manage_catalog);
@@ -599,20 +596,21 @@ export function DeptLevelCoursesPage() {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
-  // Selectors (used for both filter view + assigning)
+  // Target dept/level for assigning
   const [assignDeptId, setAssignDeptId] = useState("");
   const [assignLevelId, setAssignLevelId] = useState("");
 
-  // Filter state
+  // Course picker
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [assigning, setAssigning] = useState(false);
+
+  // Right-panel filter state
   const [filterSearch, setFilterSearch] = useState("");
   const [filterDeptId, setFilterDeptId] = useState("");
   const [filterLevelId, setFilterLevelId] = useState("");
 
-  // Multi-row add form
-  const [addRows, setAddRows] = useState<AddRow[]>([{ code: "", title: "" }]);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Inline edit state: courseId → draft values
+  // Inline edit state
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState({ code: "", title: "", level_id: "" });
   const [editSaving, setEditSaving] = useState(false);
@@ -633,6 +631,17 @@ export function DeptLevelCoursesPage() {
 
   useEffect(() => { void load(); }, [load]);
 
+  // Courses shown in the picker (all courses, filtered by search)
+  const pickerCourses = useMemo(() => {
+    const q = pickerSearch.trim().toLowerCase();
+    if (!q) return courses;
+    return courses.filter((c) => {
+      const hay = [c.code, c.title, c.department?.name].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+  }, [courses, pickerSearch]);
+
+  // Right-panel filtered view
   const filteredCourses = useMemo(() => {
     const search = filterSearch.trim().toLowerCase();
     return courses.filter((c) => {
@@ -646,40 +655,33 @@ export function DeptLevelCoursesPage() {
     });
   }, [courses, filterDeptId, filterLevelId, filterSearch]);
 
-  const addRowField = (index: number, key: keyof AddRow, value: string) => {
-    setAddRows((rows) => rows.map((r, i) => i === index ? { ...r, [key]: value } : r));
+  const togglePick = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
-  const handleAddRows = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!assignDeptId) {
-      setFeedback({ type: "danger", message: "Please select a department before adding courses." });
-      return;
-    }
-    const valid = addRows.filter((r) => r.code.trim() && r.title.trim());
-    if (valid.length === 0) {
-      setFeedback({ type: "danger", message: "Enter at least one course with a code and title." });
-      return;
-    }
-    setSubmitting(true);
+  const handleAssign = async () => {
+    if (!assignDeptId || selectedIds.size === 0) return;
+    setAssigning(true);
     try {
-      const created = await Promise.all(
-        valid.map((r) =>
-          createCourse({
-            code: r.code.trim(),
-            title: r.title.trim(),
+      const updated = await Promise.all(
+        [...selectedIds].map((id) =>
+          updateCourse(id, {
             department_id: Number(assignDeptId),
             level_id: assignLevelId ? Number(assignLevelId) : null,
           }),
         ),
       );
-      setCourses((prev) => [...prev, ...created]);
-      setAddRows([{ code: "", title: "" }]);
-      setFeedback({ type: "success", message: `${created.length} course${created.length > 1 ? "s" : ""} added.` });
+      setCourses((prev) => prev.map((c) => updated.find((u) => u.id === c.id) ?? c));
+      setSelectedIds(new Set());
+      setFeedback({ type: "success", message: `${updated.length} course${updated.length > 1 ? "s" : ""} assigned.` });
     } catch (err) {
-      setFeedback(toDanger(err, "Failed to add courses."));
+      setFeedback(toDanger(err, "Failed to assign courses."));
     } finally {
-      setSubmitting(false);
+      setAssigning(false);
     }
   };
 
@@ -720,13 +722,13 @@ export function DeptLevelCoursesPage() {
       <FeedbackAlert feedback={feedback} />
 
       <div className="row">
-        {/* Left: Assign dept/level + multi-row add */}
+        {/* Left: Assign dept/level + course picker */}
         <div className="col-lg-4 col-12">
           <div className="card height-auto mb-4">
             <div className="card-body">
               <div className="heading-layout1 mb-0">
                 <div className="item-title">
-                  <h3>Assign to Dept / Level</h3>
+                  <h3>Target Dept / Level</h3>
                 </div>
               </div>
 
@@ -734,7 +736,7 @@ export function DeptLevelCoursesPage() {
               <select
                 className="form-control"
                 value={assignDeptId}
-                onChange={(e) => setAssignDeptId(e.target.value)}
+                onChange={(e) => { setAssignDeptId(e.target.value); setSelectedIds(new Set()); }}
                 disabled={loading}
               >
                 <option value="">— Select Department —</option>
@@ -766,67 +768,80 @@ export function DeptLevelCoursesPage() {
             </div>
           </div>
 
-          {/* Multi-row add form */}
+          {/* Course picker */}
           <div className="card height-auto mb-4">
             <div className="card-body">
               <div className="heading-layout1 mb-0">
                 <div className="item-title">
-                  <h3>Add Courses</h3>
-                  <p className="mb-0 text-muted small">Add multiple courses at once.</p>
+                  <h3>Select Courses</h3>
+                  <p className="mb-0 text-muted small">Pick courses to assign to the selected dept/level.</p>
                 </div>
+                {selectedIds.size > 0 && (
+                  <span className="badge badge-primary">{selectedIds.size} selected</span>
+                )}
               </div>
 
-              <form className="new-added-form mt-3" onSubmit={(e) => void handleAddRows(e)}>
-                <fieldset disabled={!canManage || submitting}>
-                  {addRows.map((row, i) => (
-                    <div key={i} className="d-flex gap-2 align-items-center mb-2">
-                      <input
-                        className="form-control"
-                        placeholder="Code"
-                        style={{ width: "35%" }}
-                        value={row.code}
-                        onChange={(e) => addRowField(i, "code", e.target.value)}
-                        required={i === 0}
-                      />
-                      <input
-                        className="form-control"
-                        placeholder="Title"
-                        style={{ flex: 1 }}
-                        value={row.title}
-                        onChange={(e) => addRowField(i, "title", e.target.value)}
-                        required={i === 0}
-                      />
-                      {addRows.length > 1 && (
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-outline-danger"
-                          onClick={() => setAddRows((rows) => rows.filter((_, idx) => idx !== i))}
-                          title="Remove row"
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  <div className="d-flex gap-2 mt-2">
-                    <button
-                      type="button"
-                      className="btn btn-sm btn-outline-secondary"
-                      disabled={!canManage}
-                      onClick={() => setAddRows((rows) => [...rows, { code: "", title: "" }])}
+              <input
+                className="form-control mt-3"
+                placeholder="Search courses..."
+                value={pickerSearch}
+                onChange={(e) => setPickerSearch(e.target.value)}
+              />
+
+              <div
+                className="mt-2"
+                style={{ maxHeight: 280, overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: 6 }}
+              >
+                {loading ? (
+                  <div className="p-3 text-muted small">Loading...</div>
+                ) : pickerCourses.length === 0 ? (
+                  <div className="p-3 text-muted small">No courses found.</div>
+                ) : (
+                  pickerCourses.map((c) => (
+                    <label
+                      key={c.id}
+                      className="d-flex align-items-start p-2 mb-0"
+                      style={{ cursor: "pointer", borderBottom: "1px solid #f0f0f0", gap: 8 }}
                     >
-                      + Add Row
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark"
-                      disabled={!canManage || submitting || !assignDeptId}
-                    >
-                      {submitting ? "Saving..." : "Save All"}
-                    </button>
-                  </div>
-                </fieldset>
-              </form>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(c.id)}
+                        onChange={() => togglePick(c.id)}
+                        style={{ marginTop: 3, flexShrink: 0 }}
+                      />
+                      <span>
+                        <span className="font-weight-bold">{c.code}</span>
+                        <span className="text-muted"> — {c.title}</span>
+                        {c.department && (
+                          <span className="d-block text-muted" style={{ fontSize: "0.75rem" }}>
+                            {c.department.name}{c.level ? ` / ${c.level.name}` : ""}
+                          </span>
+                        )}
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+
+              <div className="d-flex gap-2 mt-3">
+                {selectedIds.size > 0 && (
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-secondary"
+                    onClick={() => setSelectedIds(new Set())}
+                  >
+                    Clear
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark"
+                  disabled={!canManage || assigning || !assignDeptId || selectedIds.size === 0}
+                  onClick={() => void handleAssign()}
+                >
+                  {assigning ? "Assigning..." : `Assign${selectedIds.size > 0 ? ` (${selectedIds.size})` : ""} →`}
+                </button>
+              </div>
             </div>
           </div>
         </div>
