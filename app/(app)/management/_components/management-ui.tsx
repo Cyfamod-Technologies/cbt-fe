@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
+import { DeleteModal } from "@/app/_components/DeleteModal";
+import { ApiLinkedError, type LinkedItem } from "@/lib/apiClient";
 import {
   addDepartmentLevel,
   createCourse,
@@ -71,6 +73,8 @@ export function SessionsManagementPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [deletePending, setDeletePending] = useState<DeletePending>(null);
+  const [confirming, setConfirming] = useState(false);
   const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
 
   const load = useCallback(async () => {
@@ -119,8 +123,25 @@ export function SessionsManagementPage() {
   };
 
   const handleDelete = async (session: AcademicSession) => {
-    if (!confirm(`Delete session "${session.name}"? This cannot be undone.`)) return;
-    await runAction(async () => deleteSession(session.id), "Session deleted.", load, setFeedback);
+    try {
+      await deleteSession(session.id);
+      setFeedback({ type: "success", message: "Session deleted." });
+      await load();
+    } catch (err) {
+      if (err instanceof ApiLinkedError) {
+        setDeletePending({
+          name: session.name,
+          linked: err.linked,
+          onConfirm: async () => {
+            await deleteSession(session.id, true);
+            setFeedback({ type: "success", message: "Session deleted." });
+            await load();
+          },
+        });
+      } else {
+        setFeedback(toDanger(err, "Failed to delete session."));
+      }
+    }
   };
 
   const startEdit = (session: AcademicSession) => {
@@ -135,8 +156,30 @@ export function SessionsManagementPage() {
     setStatus("active");
   };
 
+  const confirmDelete = async () => {
+    if (!deletePending) return;
+    setConfirming(true);
+    try {
+      await deletePending.onConfirm();
+    } catch (err) {
+      setFeedback(toDanger(err, "Failed to delete."));
+    } finally {
+      setConfirming(false);
+      setDeletePending(null);
+    }
+  };
+
   return (
     <ManagementShell title="Sessions" current="Session">
+      {deletePending && (
+        <DeleteModal
+          itemName={deletePending.name}
+          linked={deletePending.linked}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setDeletePending(null)}
+          confirming={confirming}
+        />
+      )}
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
@@ -215,6 +258,8 @@ export function SemestersManagementPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [deletePending, setDeletePending] = useState<DeletePending>(null);
+  const [confirming, setConfirming] = useState(false);
   const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
 
   const load = useCallback(async () => {
@@ -271,8 +316,25 @@ export function SemestersManagementPage() {
   };
 
   const handleDelete = async (semester: Semester) => {
-    if (!confirm(`Delete semester "${semester.name}"? This cannot be undone.`)) return;
-    await runAction(async () => deleteSemester(semester.id), "Semester deleted.", load, setFeedback);
+    try {
+      await deleteSemester(semester.id);
+      setFeedback({ type: "success", message: "Semester deleted." });
+      await load();
+    } catch (err) {
+      if (err instanceof ApiLinkedError) {
+        setDeletePending({
+          name: semester.name,
+          linked: err.linked,
+          onConfirm: async () => {
+            await deleteSemester(semester.id, true);
+            setFeedback({ type: "success", message: "Semester deleted." });
+            await load();
+          },
+        });
+      } else {
+        setFeedback(toDanger(err, "Failed to delete semester."));
+      }
+    }
   };
 
   const startEdit = (semester: Semester) => {
@@ -289,8 +351,30 @@ export function SemestersManagementPage() {
     setSessionId(String(settings?.current_session_id || sessions[0]?.id || ""));
   };
 
+  const confirmDelete = async () => {
+    if (!deletePending) return;
+    setConfirming(true);
+    try {
+      await deletePending.onConfirm();
+    } catch (err) {
+      setFeedback(toDanger(err, "Failed to delete."));
+    } finally {
+      setConfirming(false);
+      setDeletePending(null);
+    }
+  };
+
   return (
     <ManagementShell title="Semesters" current="Semesters">
+      {deletePending && (
+        <DeleteModal
+          itemName={deletePending.name}
+          linked={deletePending.linked}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setDeletePending(null)}
+          confirming={confirming}
+        />
+      )}
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
@@ -389,6 +473,8 @@ export function DepartmentsManagementPage() {
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [deletePending, setDeletePending] = useState<DeletePending>(null);
+  const [confirming, setConfirming] = useState(false);
   const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
 
   const load = useCallback(async () => {
@@ -473,8 +559,38 @@ export function DepartmentsManagementPage() {
   };
 
   const handleDeleteDept = async (department: Department) => {
-    if (!confirm(`Delete department "${department.name}"? This cannot be undone.`)) return;
-    await runAction(async () => deleteDepartment(department.id), "Department deleted.", load, setFeedback);
+    try {
+      await deleteDepartment(department.id);
+      setFeedback({ type: "success", message: "Department deleted." });
+      await load();
+    } catch (err) {
+      if (err instanceof ApiLinkedError) {
+        setDeletePending({
+          name: department.name,
+          linked: err.linked,
+          onConfirm: async () => {
+            await deleteDepartment(department.id, true);
+            setFeedback({ type: "success", message: "Department deleted." });
+            await load();
+          },
+        });
+      } else {
+        setFeedback(toDanger(err, "Failed to delete department."));
+      }
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deletePending) return;
+    setConfirming(true);
+    try {
+      await deletePending.onConfirm();
+    } catch (err) {
+      setFeedback(toDanger(err, "Failed to delete."));
+    } finally {
+      setConfirming(false);
+      setDeletePending(null);
+    }
   };
 
   const startEdit = (department: Department) => {
@@ -500,6 +616,15 @@ export function DepartmentsManagementPage() {
 
   return (
     <ManagementShell title="Departments" current="Departments">
+      {deletePending && (
+        <DeleteModal
+          itemName={deletePending.name}
+          linked={deletePending.linked}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setDeletePending(null)}
+          confirming={confirming}
+        />
+      )}
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         {editMode ? (
@@ -654,6 +779,8 @@ export function CoursesManagementPage() {
   const [editingCourseId, setEditingCourseId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [deletePending, setDeletePending] = useState<DeletePending>(null);
+  const [confirming, setConfirming] = useState(false);
   const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
 
   const load = useCallback(async () => {
@@ -696,8 +823,38 @@ export function CoursesManagementPage() {
   };
 
   const handleDelete = async (course: Course) => {
-    if (!confirm(`Delete course "${course.code} - ${course.title}"? This cannot be undone.`)) return;
-    await runAction(async () => deleteCourse(course.id), "Course deleted.", load, setFeedback);
+    try {
+      await deleteCourse(course.id);
+      setFeedback({ type: "success", message: "Course deleted." });
+      await load();
+    } catch (err) {
+      if (err instanceof ApiLinkedError) {
+        setDeletePending({
+          name: `${course.code} - ${course.title}`,
+          linked: err.linked,
+          onConfirm: async () => {
+            await deleteCourse(course.id, true);
+            setFeedback({ type: "success", message: "Course deleted." });
+            await load();
+          },
+        });
+      } else {
+        setFeedback(toDanger(err, "Failed to delete course."));
+      }
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deletePending) return;
+    setConfirming(true);
+    try {
+      await deletePending.onConfirm();
+    } catch (err) {
+      setFeedback(toDanger(err, "Failed to delete."));
+    } finally {
+      setConfirming(false);
+      setDeletePending(null);
+    }
   };
 
   const startEdit = (course: Course) => {
@@ -712,6 +869,15 @@ export function CoursesManagementPage() {
 
   return (
     <ManagementShell title="Courses" current="Departments / Courses">
+      {deletePending && (
+        <DeleteModal
+          itemName={deletePending.name}
+          linked={deletePending.linked}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setDeletePending(null)}
+          confirming={confirming}
+        />
+      )}
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
@@ -779,6 +945,8 @@ export function LevelsManagementPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [deletePending, setDeletePending] = useState<DeletePending>(null);
+  const [confirming, setConfirming] = useState(false);
   const canManageCatalog = Boolean(user?.capabilities?.manage_catalog);
 
   const load = useCallback(async () => {
@@ -813,8 +981,38 @@ export function LevelsManagementPage() {
   };
 
   const handleDelete = async (level: Level) => {
-    if (!confirm(`Delete level "${level.name}"? This cannot be undone.`)) return;
-    await runAction(async () => deleteLevel(level.id), "Level deleted.", load, setFeedback);
+    try {
+      await deleteLevel(level.id);
+      setFeedback({ type: "success", message: "Level deleted." });
+      await load();
+    } catch (err) {
+      if (err instanceof ApiLinkedError) {
+        setDeletePending({
+          name: level.name,
+          linked: err.linked,
+          onConfirm: async () => {
+            await deleteLevel(level.id, true);
+            setFeedback({ type: "success", message: "Level deleted." });
+            await load();
+          },
+        });
+      } else {
+        setFeedback(toDanger(err, "Failed to delete level."));
+      }
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deletePending) return;
+    setConfirming(true);
+    try {
+      await deletePending.onConfirm();
+    } catch (err) {
+      setFeedback(toDanger(err, "Failed to delete."));
+    } finally {
+      setConfirming(false);
+      setDeletePending(null);
+    }
   };
 
   const startEdit = (level: Level) => {
@@ -829,6 +1027,15 @@ export function LevelsManagementPage() {
 
   return (
     <ManagementShell title="Levels" current="Levels">
+      {deletePending && (
+        <DeleteModal
+          itemName={deletePending.name}
+          linked={deletePending.linked}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setDeletePending(null)}
+          confirming={confirming}
+        />
+      )}
       <FeedbackAlert feedback={feedback} />
       <div className="row">
         <div className="col-lg-4 col-12">
@@ -900,6 +1107,7 @@ function LevelChips({ department }: { department: Department }) {
 
 type Feedback = { type: "success" | "danger"; message: string } | null;
 type TableCell = ReactNode;
+type DeletePending = { name: string; linked: LinkedItem[]; onConfirm: () => Promise<void> } | null;
 
 function FormCard({
   title,

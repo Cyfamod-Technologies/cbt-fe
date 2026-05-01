@@ -14,6 +14,10 @@ import {
   type Staff,
 } from "@/lib/academic";
 import { useAuth } from "@/contexts/AuthContext";
+import { DeleteModal } from "@/app/_components/DeleteModal";
+import { ApiLinkedError, type LinkedItem } from "@/lib/apiClient";
+
+type DeletePending = { name: string; linked: LinkedItem[]; onConfirm: () => Promise<void> } | null;
 
 type StaffFormState = {
   staff_id: string;
@@ -39,6 +43,8 @@ export function StaffListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [deletePending, setDeletePending] = useState<DeletePending>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const canManageUsers = Boolean(user?.capabilities?.manage_users);
 
@@ -75,12 +81,35 @@ export function StaffListPage() {
   }, [search, staff]);
 
   const handleDelete = async (item: Staff) => {
-    if (!window.confirm(`Delete staff profile for "${item.full_name}"? This cannot be undone.`)) return;
     try {
       await deleteStaff(item.id);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to delete staff profile.");
+      if (err instanceof ApiLinkedError) {
+        setDeletePending({
+          name: item.full_name,
+          linked: err.linked,
+          onConfirm: async () => {
+            await deleteStaff(item.id, true);
+            await load();
+          },
+        });
+      } else {
+        setError(err instanceof Error ? err.message : "Unable to delete staff profile.");
+      }
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deletePending) return;
+    setConfirming(true);
+    try {
+      await deletePending.onConfirm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete.");
+    } finally {
+      setConfirming(false);
+      setDeletePending(null);
     }
   };
 
@@ -104,6 +133,15 @@ export function StaffListPage() {
 
   return (
     <>
+      {deletePending && (
+        <DeleteModal
+          itemName={deletePending.name}
+          linked={deletePending.linked}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setDeletePending(null)}
+          confirming={confirming}
+        />
+      )}
       <div className="breadcrumbs-area">
         <h3>Staff Management</h3>
         <ul>

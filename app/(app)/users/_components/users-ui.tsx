@@ -16,6 +16,10 @@ import {
   type SchoolUser,
 } from "@/lib/academic";
 import { useAuth } from "@/contexts/AuthContext";
+import { DeleteModal } from "@/app/_components/DeleteModal";
+import { ApiLinkedError, type LinkedItem } from "@/lib/apiClient";
+
+type DeletePending = { name: string; linked: LinkedItem[]; onConfirm: () => Promise<void> } | null;
 
 type Role = "staff" | "student";
 
@@ -26,6 +30,8 @@ export function UsersPage({ role, title }: { role: Role; title: string }) {
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [form, setForm] = useState({ name: "", email: "", password: "", status: "active" });
+  const [deletePending, setDeletePending] = useState<DeletePending>(null);
+  const [confirming, setConfirming] = useState(false);
   const canManageUsers = Boolean(user?.capabilities?.manage_users);
 
   const load = useCallback(async () => {
@@ -93,8 +99,38 @@ export function UsersPage({ role, title }: { role: Role; title: string }) {
   };
 
   const handleDelete = async (targetUser: SchoolUser) => {
-    if (!confirm(`Delete ${title.toLowerCase()} "${targetUser.name}"? This cannot be undone.`)) return;
-    await runAction(async () => deleteUser(targetUser.id), `${title} deleted.`, load, setFeedback);
+    try {
+      await deleteUser(targetUser.id);
+      setFeedback({ type: "success", message: `${title} deleted.` });
+      await load();
+    } catch (err) {
+      if (err instanceof ApiLinkedError) {
+        setDeletePending({
+          name: targetUser.name,
+          linked: err.linked,
+          onConfirm: async () => {
+            await deleteUser(targetUser.id, true);
+            setFeedback({ type: "success", message: `${title} deleted.` });
+            await load();
+          },
+        });
+      } else {
+        setFeedback(toDanger(err, `Failed to delete ${title.toLowerCase()}.`));
+      }
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deletePending) return;
+    setConfirming(true);
+    try {
+      await deletePending.onConfirm();
+    } catch (err) {
+      setFeedback(toDanger(err, "Failed to delete."));
+    } finally {
+      setConfirming(false);
+      setDeletePending(null);
+    }
   };
 
   const cancelEdit = () => {
@@ -104,6 +140,15 @@ export function UsersPage({ role, title }: { role: Role; title: string }) {
 
   return (
     <>
+      {deletePending && (
+        <DeleteModal
+          itemName={deletePending.name}
+          linked={deletePending.linked}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setDeletePending(null)}
+          confirming={confirming}
+        />
+      )}
       <div className="breadcrumbs-area">
         <h3>{title}</h3>
         <ul>
@@ -218,6 +263,8 @@ export function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [filters, setFilters] = useState({ search: "", departmentId: "", levelId: "", status: "all" });
+  const [deletePending, setDeletePending] = useState<DeletePending>(null);
+  const [confirming, setConfirming] = useState(false);
   const canManageUsers = Boolean(user?.capabilities?.manage_users);
 
   const load = useCallback(async () => {
@@ -241,8 +288,38 @@ export function StudentsPage() {
   useEffect(() => { void load(); }, [load]);
 
   const handleDelete = async (student: SchoolUser) => {
-    if (!confirm(`Delete student "${student.name}"? This cannot be undone.`)) return;
-    await runAction(async () => deleteUser(student.id), "Student deleted.", load, setFeedback);
+    try {
+      await deleteUser(student.id);
+      setFeedback({ type: "success", message: "Student deleted." });
+      await load();
+    } catch (err) {
+      if (err instanceof ApiLinkedError) {
+        setDeletePending({
+          name: student.name,
+          linked: err.linked,
+          onConfirm: async () => {
+            await deleteUser(student.id, true);
+            setFeedback({ type: "success", message: "Student deleted." });
+            await load();
+          },
+        });
+      } else {
+        setFeedback(toDanger(err, "Failed to delete student."));
+      }
+    }
+  };
+
+  const confirmStudentDelete = async () => {
+    if (!deletePending) return;
+    setConfirming(true);
+    try {
+      await deletePending.onConfirm();
+    } catch (err) {
+      setFeedback(toDanger(err, "Failed to delete."));
+    } finally {
+      setConfirming(false);
+      setDeletePending(null);
+    }
   };
 
   const filteredStudents = students.filter((student) => {
@@ -258,6 +335,15 @@ export function StudentsPage() {
 
   return (
     <>
+      {deletePending && (
+        <DeleteModal
+          itemName={deletePending.name}
+          linked={deletePending.linked}
+          onConfirm={() => void confirmStudentDelete()}
+          onCancel={() => setDeletePending(null)}
+          confirming={confirming}
+        />
+      )}
       <div className="breadcrumbs-area">
         <h3>Students</h3>
         <ul>

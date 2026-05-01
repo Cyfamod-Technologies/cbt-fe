@@ -9,7 +9,22 @@ type ApiFetchOptions = RequestInit & {
 type ApiErrorPayload = {
   message?: string;
   errors?: Record<string, string[]>;
+  linked?: LinkedItem[];
 };
+
+export type LinkedItem = {
+  label: string;
+  count: number;
+  unlinkable: boolean;
+};
+
+export class ApiLinkedError extends Error {
+  linked: LinkedItem[];
+  constructor(message: string, linked: LinkedItem[]) {
+    super(message);
+    this.linked = linked;
+  }
+}
 
 function buildUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) {
@@ -65,6 +80,11 @@ export async function apiFetch<T = unknown>(
     : await response.text();
 
   if (!response.ok) {
+    if (typeof payload === "object" && payload !== null && Array.isArray((payload as ApiErrorPayload).linked)) {
+      const p = payload as ApiErrorPayload;
+      throw new ApiLinkedError(p.message ?? `Request failed (${response.status})`, p.linked!);
+    }
+
     const message =
       typeof payload === "string"
         ? payload || `Request failed with status ${response.status}`

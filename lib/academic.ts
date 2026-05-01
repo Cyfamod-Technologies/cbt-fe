@@ -155,8 +155,8 @@ export async function setCurrentSession(id: number) {
   })).data;
 }
 
-export async function deleteSession(id: number) {
-  await apiFetch(`/api/v1/sessions/${id}`, { method: "DELETE" });
+export async function deleteSession(id: number, cascade = false) {
+  await apiFetch(`/api/v1/sessions/${id}${cascade ? "?cascade=true" : ""}`, { method: "DELETE" });
 }
 
 export async function listSemesters() {
@@ -183,8 +183,8 @@ export async function setCurrentSemester(id: number) {
   })).data;
 }
 
-export async function deleteSemester(id: number) {
-  await apiFetch(`/api/v1/semesters/${id}`, { method: "DELETE" });
+export async function deleteSemester(id: number, cascade = false) {
+  await apiFetch(`/api/v1/semesters/${id}${cascade ? "?cascade=true" : ""}`, { method: "DELETE" });
 }
 
 export async function listDepartments() {
@@ -218,8 +218,8 @@ export async function removeDepartmentLevel(departmentId: number, levelId: numbe
   })).data;
 }
 
-export async function deleteDepartment(id: number) {
-  await apiFetch(`/api/v1/departments/${id}`, { method: "DELETE" });
+export async function deleteDepartment(id: number, cascade = false) {
+  await apiFetch(`/api/v1/departments/${id}${cascade ? "?cascade=true" : ""}`, { method: "DELETE" });
 }
 
 export async function listLevels() {
@@ -240,8 +240,8 @@ export async function updateLevel(id: number, payload: { name?: string; status?:
   })).data;
 }
 
-export async function deleteLevel(id: number) {
-  await apiFetch(`/api/v1/levels/${id}`, { method: "DELETE" });
+export async function deleteLevel(id: number, cascade = false) {
+  await apiFetch(`/api/v1/levels/${id}${cascade ? "?cascade=true" : ""}`, { method: "DELETE" });
 }
 
 export async function listCourses() {
@@ -277,8 +277,8 @@ export async function updateCourse(
   })).data;
 }
 
-export async function deleteCourse(id: number) {
-  await apiFetch(`/api/v1/courses/${id}`, { method: "DELETE" });
+export async function deleteCourse(id: number, cascade = false) {
+  await apiFetch(`/api/v1/courses/${id}${cascade ? "?cascade=true" : ""}`, { method: "DELETE" });
 }
 
 export async function getSchoolSettings() {
@@ -361,8 +361,8 @@ export async function deactivateStaff(id: number) {
   return (await apiFetch<ItemResponse<Staff>>(`/api/v1/staff/${id}/deactivate`, { method: "PATCH" })).data;
 }
 
-export async function deleteStaff(id: number) {
-  await apiFetch(`/api/v1/staff/${id}`, { method: "DELETE" });
+export async function deleteStaff(id: number, cascade = false) {
+  await apiFetch(`/api/v1/staff/${id}${cascade ? "?cascade=true" : ""}`, { method: "DELETE" });
 }
 
 export async function updateUser(
@@ -395,8 +395,8 @@ export async function deactivateUser(id: number) {
   return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/users/${id}/deactivate`, { method: "PATCH" })).data;
 }
 
-export async function deleteUser(id: number) {
-  await apiFetch(`/api/v1/users/${id}`, { method: "DELETE" });
+export async function deleteUser(id: number, cascade = false) {
+  await apiFetch(`/api/v1/users/${id}${cascade ? "?cascade=true" : ""}`, { method: "DELETE" });
 }
 
 export async function listStaffCourseAssignments(staffId?: number) {
