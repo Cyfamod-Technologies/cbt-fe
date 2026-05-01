@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Pagination } from "@/app/_components/Pagination";
 import {
   activateUser,
   createUser,
@@ -322,16 +323,29 @@ export function StudentsPage() {
     }
   };
 
-  const filteredStudents = students.filter((student) => {
-    const search = filters.search.trim().toLowerCase();
-    const haystack = [student.name, student.matric_no, student.student_id_no, student.phone, student.department?.name, student.level?.name]
-      .filter(Boolean).join(" ").toLowerCase();
-    if (search && !haystack.includes(search)) return false;
-    if (filters.departmentId && String(student.department_id || "") !== filters.departmentId) return false;
-    if (filters.levelId && String(student.level_id || "") !== filters.levelId) return false;
-    if (filters.status !== "all" && student.status !== filters.status) return false;
-    return true;
-  });
+  const filteredStudents = useMemo(
+    () =>
+      students.filter((student) => {
+        const search = filters.search.trim().toLowerCase();
+        const haystack = [student.name, student.matric_no, student.student_id_no, student.phone, student.department?.name, student.level?.name]
+          .filter(Boolean).join(" ").toLowerCase();
+        if (search && !haystack.includes(search)) return false;
+        if (filters.departmentId && String(student.department_id || "") !== filters.departmentId) return false;
+        if (filters.levelId && String(student.level_id || "") !== filters.levelId) return false;
+        if (filters.status !== "all" && student.status !== filters.status) return false;
+        return true;
+      }),
+    [students, filters],
+  );
+
+  const STUDENTS_PAGE_SIZE = 15;
+  const [studentsPage, setStudentsPage] = useState(1);
+  const studentsTotalPages = Math.ceil(filteredStudents.length / STUDENTS_PAGE_SIZE);
+  const paginatedStudents = filteredStudents.slice((studentsPage - 1) * STUDENTS_PAGE_SIZE, studentsPage * STUDENTS_PAGE_SIZE);
+
+  useEffect(() => {
+    setStudentsPage(1);
+  }, [filteredStudents.length]);
 
   return (
     <>
@@ -422,10 +436,10 @@ export function StudentsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredStudents.length === 0 ? (
+                  {paginatedStudents.length === 0 ? (
                     <tr><td colSpan={7} className="text-muted">No records found.</td></tr>
                   ) : (
-                    filteredStudents.map((student) => (
+                    paginatedStudents.map((student) => (
                       <tr key={student.id}>
                         <td>{student.matric_no || "-"}</td>
                         <td>{student.student_id_no || "-"}</td>
@@ -465,6 +479,13 @@ export function StudentsPage() {
               </table>
             </div>
           )}
+          <Pagination
+            page={studentsPage}
+            totalPages={studentsTotalPages}
+            totalItems={filteredStudents.length}
+            pageSize={STUDENTS_PAGE_SIZE}
+            onPageChange={setStudentsPage}
+          />
         </div>
       </div>
     </>
@@ -503,12 +524,23 @@ function TableCard({
   loading,
   headers,
   rows,
+  pageSize = 15,
 }: {
   title: string;
   loading: boolean;
   headers: string[];
   rows: React.ReactNode[][];
+  pageSize?: number;
 }) {
+  const [page, setPage] = useState(1);
+  const totalItems = rows.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const paginatedRows = rows.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [totalItems]);
+
   return (
     <div className="card height-auto">
       <div className="card-body">
@@ -520,34 +552,43 @@ function TableCard({
         {loading ? (
           <div className="text-muted">Loading...</div>
         ) : (
-          <div className="table-responsive">
-            <table className="table">
-              <thead>
-                <tr>
-                  {headers.map((header) => (
-                    <th key={header}>{header}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
+          <>
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
                   <tr>
-                    <td colSpan={headers.length} className="text-muted">
-                      No records found.
-                    </td>
+                    {headers.map((header) => (
+                      <th key={header}>{header}</th>
+                    ))}
                   </tr>
-                ) : (
-                  rows.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {row.map((cell, cellIndex) => (
-                        <td key={cellIndex}>{cell}</td>
-                      ))}
+                </thead>
+                <tbody>
+                  {paginatedRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={headers.length} className="text-muted">
+                        No records found.
+                      </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    paginatedRows.map((row, rowIndex) => (
+                      <tr key={rowIndex}>
+                        {row.map((cell, cellIndex) => (
+                          <td key={cellIndex}>{cell}</td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+          </>
         )}
       </div>
     </div>

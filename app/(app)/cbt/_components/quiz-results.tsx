@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { getAssessmentAttempt, listAssessmentAttempts, type AssessmentAttempt } from "@/lib/cbt";
+import { Pagination } from "@/app/_components/Pagination";
+
+const RESULTS_PAGE_SIZE = 15;
 import { formatDateTime, formatResultScore, statusBadgeClass } from "./cbt-utils";
 
 interface QuizResultsProps {
@@ -89,6 +92,12 @@ export function QuizResults({ assessmentId, attemptId, review }: QuizResultsProp
       return true;
     });
   }, [attempts, filters]);
+
+  const [resultsPage, setResultsPage] = useState(1);
+  const resultsTotalPages = Math.ceil(filteredAttempts.length / RESULTS_PAGE_SIZE);
+  const paginatedAttempts = filteredAttempts.slice((resultsPage - 1) * RESULTS_PAGE_SIZE, resultsPage * RESULTS_PAGE_SIZE);
+
+  useEffect(() => { setResultsPage(1); }, [filteredAttempts.length]);
 
   const updateFilter = (key: keyof typeof filters, value: string) => {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -191,7 +200,7 @@ export function QuizResults({ assessmentId, attemptId, review }: QuizResultsProp
               </div>
             </div>
             <div className="text-muted small mg-b-20">
-              Showing {filteredAttempts.length} of {attempts.length} attempt(s). Use the date/time range to trace exams written by a student.
+              Showing {filteredAttempts.length} of {attempts.length} attempt(s).
             </div>
             <div className="table-responsive">
               <table className="table">
@@ -206,10 +215,10 @@ export function QuizResults({ assessmentId, attemptId, review }: QuizResultsProp
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAttempts.length === 0 ? (
+                  {paginatedAttempts.length === 0 ? (
                     <tr><td colSpan={6}>No results found.</td></tr>
                   ) : (
-                    filteredAttempts.map((item) => (
+                    paginatedAttempts.map((item) => (
                       <tr key={item.id}>
                         <td>
                           <div className="font-weight-bold text-dark">{item.assessment?.title || `Assessment #${item.assessment_id}`}</div>
@@ -234,6 +243,13 @@ export function QuizResults({ assessmentId, attemptId, review }: QuizResultsProp
                 </tbody>
               </table>
             </div>
+            <Pagination
+              page={resultsPage}
+              totalPages={resultsTotalPages}
+              totalItems={filteredAttempts.length}
+              pageSize={RESULTS_PAGE_SIZE}
+              onPageChange={setResultsPage}
+            />
           </div>
         </div>
       )}

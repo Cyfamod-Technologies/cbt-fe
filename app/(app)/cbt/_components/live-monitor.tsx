@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { listAssessmentAttempts, type AssessmentAttempt } from "@/lib/cbt";
+import { Pagination } from "@/app/_components/Pagination";
+
+const MONITOR_PAGE_SIZE = 15;
 import { assessmentClass, assessmentSubject, formatDateTime } from "./cbt-utils";
 
 const AUTO_REFRESH_MS = 30000;
@@ -73,6 +76,7 @@ export function LiveMonitor() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [monitorPage, setMonitorPage] = useState(1);
 
   const load = async (showLoading = false) => {
     if (showLoading) {
@@ -104,6 +108,10 @@ export function LiveMonitor() {
       window.clearInterval(tickTimer);
     };
   }, []);
+
+  useEffect(() => { setMonitorPage(1); }, [attempts.length]);
+
+  const paginatedAttempts = attempts.slice((monitorPage - 1) * MONITOR_PAGE_SIZE, monitorPage * MONITOR_PAGE_SIZE);
 
   const stats = useMemo(() => {
     const expired = attempts.filter((attempt) => {
@@ -193,7 +201,7 @@ export function LiveMonitor() {
                     <td colSpan={6}>No student is currently writing.</td>
                   </tr>
                 ) : (
-                  attempts.map((attempt) => {
+                  paginatedAttempts.map((attempt) => {
                     const remaining = remainingSeconds(attempt, now);
                     const assessment = attempt.assessment;
 
@@ -225,6 +233,13 @@ export function LiveMonitor() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={monitorPage}
+            totalPages={Math.ceil(attempts.length / MONITOR_PAGE_SIZE)}
+            totalItems={attempts.length}
+            pageSize={MONITOR_PAGE_SIZE}
+            onPageChange={setMonitorPage}
+          />
         </div>
       </div>
     </>

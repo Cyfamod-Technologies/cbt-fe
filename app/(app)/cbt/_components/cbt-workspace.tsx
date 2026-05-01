@@ -3,6 +3,9 @@
 import Link from "next/link";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { Pagination } from "@/app/_components/Pagination";
+
+const PAGE_SIZE = 15;
 import { useRouter } from "next/navigation";
 import { listCourses, listDepartments, listLevels, listSemesters, listSessions, type Course, type Department, type Level, type AcademicSession, type Semester } from "@/lib/academic";
 import { useAuth } from "@/contexts/AuthContext";
@@ -164,6 +167,15 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
   useEffect(() => {
     void loadData();
   }, [user, view, canManage]);
+
+  const [assessmentsPage, setAssessmentsPage] = useState(1);
+  const [attemptsPage, setAttemptsPage] = useState(1);
+
+  useEffect(() => { setAssessmentsPage(1); }, [assessments.length]);
+  useEffect(() => { setAttemptsPage(1); }, [attempts.length]);
+
+  const paginatedAssessments = assessments.slice((assessmentsPage - 1) * PAGE_SIZE, assessmentsPage * PAGE_SIZE);
+  const paginatedAttempts = attempts.slice((attemptsPage - 1) * PAGE_SIZE, attemptsPage * PAGE_SIZE);
 
   const stats = useMemo(() => {
     const published = assessments.filter((assessment) => assessment.status === "published").length;
@@ -421,12 +433,12 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
                     <tr>
                       <td colSpan={7}>Loading...</td>
                     </tr>
-                  ) : assessments.length === 0 ? (
+                  ) : paginatedAssessments.length === 0 ? (
                     <tr>
                       <td colSpan={7}>No assessments found.</td>
                     </tr>
                   ) : (
-                    assessments.map((assessment) => (
+                    paginatedAssessments.map((assessment) => (
                       <tr key={assessment.id}>
                         <td>
                           <span className="badge badge-info">{assessment.code}</span>
@@ -474,6 +486,13 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              page={assessmentsPage}
+              totalPages={Math.ceil(assessments.length / PAGE_SIZE)}
+              totalItems={assessments.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setAssessmentsPage}
+            />
           </div>
         </div>
       )}
@@ -503,12 +522,12 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
                     <tr>
                       <td colSpan={canManage ? 6 : 5}>Loading...</td>
                     </tr>
-                  ) : attempts.length === 0 ? (
+                  ) : paginatedAttempts.length === 0 ? (
                     <tr>
                       <td colSpan={canManage ? 6 : 5}>No attempts found.</td>
                     </tr>
                   ) : (
-                    attempts.map((attempt) => (
+                    paginatedAttempts.map((attempt) => (
                       <tr key={attempt.id}>
                         <td>
                           <strong>{attempt.assessment?.title || `Assessment #${attempt.assessment_id}`}</strong>
@@ -527,6 +546,13 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
                 </tbody>
               </table>
             </div>
+            <Pagination
+              page={attemptsPage}
+              totalPages={Math.ceil(attempts.length / PAGE_SIZE)}
+              totalItems={attempts.length}
+              pageSize={PAGE_SIZE}
+              onPageChange={setAttemptsPage}
+            />
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, ReactNode, useCallback, useEffect, useState } from "react";
 import { DeleteModal } from "@/app/_components/DeleteModal";
+import { Pagination } from "@/app/_components/Pagination";
 import { ApiLinkedError, type LinkedItem } from "@/lib/apiClient";
 import {
   addDepartmentLevel,
@@ -1141,12 +1142,23 @@ function TableCard({
   loading,
   headers,
   rows,
+  pageSize = 15,
 }: {
   title: string;
   loading: boolean;
   headers: string[];
   rows: TableCell[][];
+  pageSize?: number;
 }) {
+  const [page, setPage] = useState(1);
+  const totalItems = rows.length;
+  const totalPages = Math.ceil(totalItems / pageSize);
+  const paginatedRows = rows.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [totalItems]);
+
   return (
     <div className="card height-auto">
       <div className="card-body">
@@ -1158,34 +1170,43 @@ function TableCard({
         {loading ? (
           <div className="text-muted">Loading...</div>
         ) : (
-          <div className="table-responsive">
-            <table className="table">
-              <thead>
-                <tr>
-                  {headers.map((header) => (
-                    <th key={header}>{header}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
+          <>
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
                   <tr>
-                    <td colSpan={headers.length} className="text-muted">
-                      No records found.
-                    </td>
+                    {headers.map((header) => (
+                      <th key={header}>{header}</th>
+                    ))}
                   </tr>
-                ) : (
-                  rows.map((row, rowIndex) => (
-                    <tr key={rowIndex}>
-                      {row.map((cell, cellIndex) => (
-                        <td key={cellIndex}>{cell}</td>
-                      ))}
+                </thead>
+                <tbody>
+                  {paginatedRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={headers.length} className="text-muted">
+                        No records found.
+                      </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    paginatedRows.map((row, rowIndex) => (
+                      <tr key={rowIndex}>
+                        {row.map((cell, cellIndex) => (
+                          <td key={cellIndex}>{cell}</td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+          </>
         )}
       </div>
     </div>

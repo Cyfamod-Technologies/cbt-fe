@@ -1830,3 +1830,31 @@ textarea {
     transition: none;
   }
 }
+
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+.cbt-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 2px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cbt-pagination__info {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.cbt-pagination__controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.cbt-pagination__ellipsis {
+  padding: 2px 6px;
+  color: #6c757d;
+  font-size: 0.85rem;
+}

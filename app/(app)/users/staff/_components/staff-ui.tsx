@@ -15,7 +15,10 @@ import {
 } from "@/lib/academic";
 import { useAuth } from "@/contexts/AuthContext";
 import { DeleteModal } from "@/app/_components/DeleteModal";
+import { Pagination } from "@/app/_components/Pagination";
 import { ApiLinkedError, type LinkedItem } from "@/lib/apiClient";
+
+const STAFF_PAGE_SIZE = 15;
 
 type DeletePending = { name: string; linked: LinkedItem[]; onConfirm: () => Promise<void> } | null;
 
@@ -64,6 +67,8 @@ export function StaffListPage() {
     void load();
   }, []);
 
+  const [staffPage, setStaffPage] = useState(1);
+
   const filteredStaff = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) {
@@ -79,6 +84,13 @@ export function StaffListPage() {
       return haystack.includes(query);
     });
   }, [search, staff]);
+
+  const staffTotalPages = Math.ceil(filteredStaff.length / STAFF_PAGE_SIZE);
+  const paginatedStaff = filteredStaff.slice((staffPage - 1) * STAFF_PAGE_SIZE, staffPage * STAFF_PAGE_SIZE);
+
+  useEffect(() => {
+    setStaffPage(1);
+  }, [filteredStaff.length]);
 
   const handleDelete = async (item: Staff) => {
     try {
@@ -219,14 +231,14 @@ export function StaffListPage() {
                       Loading staff...
                     </td>
                   </tr>
-                ) : filteredStaff.length === 0 ? (
+                ) : paginatedStaff.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center">
                       No staff found.
                     </td>
                   </tr>
                 ) : (
-                  filteredStaff.map((item) => (
+                  paginatedStaff.map((item) => (
                     <tr key={item.id}>
                       <td>{item.staff_id}</td>
                       <td>{item.full_name}</td>
@@ -257,6 +269,13 @@ export function StaffListPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={staffPage}
+            totalPages={staffTotalPages}
+            totalItems={filteredStaff.length}
+            pageSize={STAFF_PAGE_SIZE}
+            onPageChange={setStaffPage}
+          />
         </div>
       </div>
     </>
