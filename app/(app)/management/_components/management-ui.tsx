@@ -776,7 +776,7 @@ export function DepartmentsManagementPage() {
 export function CoursesManagementPage() {
   const { user } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
-  const [form, setForm] = useState({ code: "", title: "" });
+  const [form, setForm] = useState({ code: "", title: "", credit_unit: "" });
   const [editingCourseId, setEditingCourseId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
@@ -803,18 +803,21 @@ export function CoursesManagementPage() {
     event.preventDefault();
     await runAction(
       async () => {
+        const creditUnit = form.credit_unit ? Number(form.credit_unit) : undefined;
         if (editingCourseId) {
           await updateCourse(editingCourseId, {
             code: form.code.trim(),
             title: form.title.trim(),
+            credit_unit: creditUnit,
           });
         } else {
           await createCourse({
             code: form.code.trim(),
             title: form.title.trim(),
+            credit_unit: creditUnit,
           });
         }
-        setForm({ code: "", title: "" });
+        setForm({ code: "", title: "", credit_unit: "" });
         setEditingCourseId(null);
       },
       editingCourseId ? "Course updated." : "Course created.",
@@ -860,12 +863,12 @@ export function CoursesManagementPage() {
 
   const startEdit = (course: Course) => {
     setEditingCourseId(course.id);
-    setForm({ code: course.code, title: course.title });
+    setForm({ code: course.code, title: course.title, credit_unit: String(course.credit_unit ?? "") });
   };
 
   const cancelEdit = () => {
     setEditingCourseId(null);
-    setForm({ code: "", title: "" });
+    setForm({ code: "", title: "", credit_unit: "" });
   };
 
   return (
@@ -903,6 +906,16 @@ export function CoursesManagementPage() {
               onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
               required
             />
+            <label className="mt-3">Credit Unit</label>
+            <input
+              type="number"
+              min="0"
+              max="20"
+              className="form-control"
+              placeholder="e.g. 2"
+              value={form.credit_unit}
+              onChange={(event) => setForm((current) => ({ ...current, credit_unit: event.target.value }))}
+            />
             <button type="submit" className="btn btn-primary mt-3">
               {editingCourseId ? "Update Course" : "Save Course"}
             </button>
@@ -917,10 +930,11 @@ export function CoursesManagementPage() {
           <TableCard
             title="All Courses"
             loading={loading}
-            headers={["Code", "Title", "Department", "Status", "Action"]}
+            headers={["Code", "Title", "CU", "Department", "Status", "Action"]}
             rows={courses.map((course) => [
               course.code,
               course.title,
+              course.credit_unit ? String(course.credit_unit) : "—",
               course.department?.name || "",
               course.status,
               <div key={`course-actions-${course.id}`} className="cbt-actions">

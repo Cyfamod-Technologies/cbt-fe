@@ -7,7 +7,7 @@ import { Pagination } from "@/app/_components/Pagination";
 
 const PAGE_SIZE = 15;
 import { useRouter } from "next/navigation";
-import { listCourses, listDepartments, listLevels, listSemesters, listSessions, type Course, type Department, type Level, type AcademicSession, type Semester } from "@/lib/academic";
+import { getSchoolSettings, listCourses, listDepartments, listLevels, type Course, type Department, type Level, type SchoolSettings } from "@/lib/academic";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   closeAssessment,
@@ -42,12 +42,12 @@ const tabs = [
   { label: "History", href: "/cbt/history", view: "history" },
 ] as const;
 
+const ASSESSMENT_TYPES = ["MOCK", "TEST", "EXAM"] as const;
+type AssessmentType = typeof ASSESSMENT_TYPES[number];
+
 const initialForm = {
-  code: "",
-  title: "",
+  assessment_type: "TEST" as AssessmentType,
   description: "",
-  session_id: "",
-  semester_id: "",
   department_id: "",
   level_id: "",
   course_id: "",
@@ -101,11 +101,10 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
   const isStudent = hasCapability("take_exams");
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [attempts, setAttempts] = useState<AssessmentAttempt[]>([]);
-  const [sessions, setSessions] = useState<AcademicSession[]>([]);
-  const [semesters, setSemesters] = useState<Semester[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [settings, setSettings] = useState<SchoolSettings | null>(null);
   const [form, setForm] = useState(initialForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -133,21 +132,19 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
           return;
         }
 
-        const [assessmentData, sessionData, semesterData, departmentData, levelData, courseData] = await Promise.all([
+        const [assessmentData, departmentData, levelData, courseData, settingsData] = await Promise.all([
           listAssessments(),
-          listSessions(),
-          listSemesters(),
           listDepartments(),
           listLevels(),
           listCourses(),
+          getSchoolSettings(),
         ]);
 
         setAssessments(assessmentData);
-        setSessions(sessionData);
-        setSemesters(semesterData);
         setDepartments(departmentData);
         setLevels(levelData);
         setCourses(courseData);
+        setSettings(settingsData);
         return;
       }
 
@@ -184,12 +181,20 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
     return { published, draft, submitted };
   }, [assessments, attempts]);
 
+  const selectedCourse = useMemo(
+    () => courses.find((c) => String(c.id) === form.course_id) ?? null,
+    [courses, form.course_id],
+  );
+
+  const autoCode = selectedCourse ? `${selectedCourse.code}-${form.assessment_type}` : `ASMT-${form.assessment_type}`;
+  const autoTitle = autoCode;
+
   const createPayload = (): CreateAssessmentPayload => ({
-    code: form.code.trim(),
-    title: form.title.trim(),
+    code: autoCode,
+    title: autoTitle,
     description: form.description.trim(),
-    session_id: Number(form.session_id),
-    semester_id: Number(form.semester_id),
+    session_id: settings?.current_session_id ?? 0,
+    semester_id: settings?.current_semester_id ?? 0,
     department_id: Number(form.department_id),
     level_id: form.level_id ? Number(form.level_id) : null,
     course_id: form.course_id ? Number(form.course_id) : null,
@@ -310,97 +315,97 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
                 <h3>Create Assessment</h3>
               </div>
             </div>
+            {!settings?.current_session_id && (
+              <div className="alert alert-warning">No current session set. Please configure school settings before creating assessments.</div>
+            )}
+            {!settings?.current_semester_id && (
+              <div className="alert alert-warning">No current semester set. Please configure school settings before creating assessments.</div>
+            )}
             <form onSubmit={handleCreate}>
-              <div className="row">
-                <div className="col-lg-3 col-md-6">
-                  <div className="form-group">
-                    <label>Code</label>
-                    <input className="form-control" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} required />
-                  </div>
+              <div className="row gutters-8">
+                {/* Row 1: Department → Level → Course → Assessment Type */}
+                <div className="col-lg-3 col-md-6 col-12 form-group">
+                  <label>Department *</label>
+                  <select className="form-control" value={form.department_id} onChange={(event) => setForm({ ...form, department_id: event.target.value })} required>
+                    <option value="">Select department</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="col-lg-3 col-md-6">
-                  <div className="form-group">
-                    <label>Title</label>
-                    <input className="form-control" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} required />
-                  </div>
+                <div className="col-lg-3 col-md-6 col-12 form-group">
+                  <label>Level</label>
+                  <select className="form-control" value={form.level_id} onChange={(event) => setForm({ ...form, level_id: event.target.value })}>
+                    <option value="">All levels</option>
+                    {levels.map((l) => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="col-lg-3 col-md-6">
-                  <div className="form-group">
-                    <label>Session</label>
-                    <select className="form-control" value={form.session_id} onChange={(event) => setForm({ ...form, session_id: event.target.value })} required>
-                      <option value="">Select session</option>
-                      {sessions.map((session) => (
-                        <option key={session.id} value={session.id}>
-                          {session.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="col-lg-3 col-md-6 col-12 form-group">
+                  <label>Course</label>
+                  <select
+                    className="form-control"
+                    value={form.course_id}
+                    onChange={(event) => {
+                      const c = courses.find((x) => String(x.id) === event.target.value);
+                      setForm({ ...form, course_id: event.target.value, description: c?.title ?? form.description });
+                    }}
+                  >
+                    <option value="">No course</option>
+                    {courses.map((c) => (
+                      <option key={c.id} value={c.id}>{c.code} - {c.title}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="col-lg-3 col-md-6">
-                  <div className="form-group">
-                    <label>Semester</label>
-                    <select className="form-control" value={form.semester_id} onChange={(event) => setForm({ ...form, semester_id: event.target.value })} required>
-                      <option value="">Select semester</option>
-                      {semesters.map((semester) => (
-                        <option key={semester.id} value={semester.id}>
-                          {semester.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="col-lg-3 col-md-6 col-12 form-group">
+                  <label>Assessment Type *</label>
+                  <select className="form-control" value={form.assessment_type} onChange={(event) => setForm({ ...form, assessment_type: event.target.value as AssessmentType })} required>
+                    {ASSESSMENT_TYPES.map((t) => (
+                      <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>
+                    ))}
+                  </select>
                 </div>
-                <div className="col-lg-3 col-md-6">
-                  <div className="form-group">
-                    <label>Department</label>
-                    <select className="form-control" value={form.department_id} onChange={(event) => setForm({ ...form, department_id: event.target.value })} required>
-                      <option value="">Select department</option>
-                      {departments.map((department) => (
-                        <option key={department.id} value={department.id}>
-                          {department.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Auto-generated title preview */}
+                <div className="col-12 form-group">
+                  <label>Assessment Title / Code <span className="text-muted small">(auto-generated)</span></label>
+                  <input className="form-control bg-light" value={autoTitle} readOnly style={{ fontWeight: 600 }} />
                 </div>
-                <div className="col-lg-3 col-md-6">
-                  <div className="form-group">
-                    <label>Level</label>
-                    <select className="form-control" value={form.level_id} onChange={(event) => setForm({ ...form, level_id: event.target.value })}>
-                      <option value="">All levels</option>
-                      {levels.map((level) => (
-                        <option key={level.id} value={level.id}>
-                          {level.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Row 2: Description */}
+                <div className="col-12 form-group">
+                  <label>Description</label>
+                  <input
+                    className="form-control"
+                    value={form.description}
+                    placeholder="Defaults to course title"
+                    onChange={(event) => setForm({ ...form, description: event.target.value })}
+                  />
                 </div>
-                <div className="col-lg-3 col-md-6">
-                  <div className="form-group">
-                    <label>Course</label>
-                    <select className="form-control" value={form.course_id} onChange={(event) => setForm({ ...form, course_id: event.target.value })}>
-                      <option value="">No course</option>
-                      {courses.map((course) => (
-                        <option key={course.id} value={course.id}>
-                          {course.code} - {course.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Row 3: Duration → Pass Mark → Status */}
+                <div className="col-lg-3 col-md-6 col-12 form-group">
+                  <label>Duration (minutes)</label>
+                  <input type="number" min="0" className="form-control" value={form.duration_minutes} onChange={(event) => setForm({ ...form, duration_minutes: event.target.value })} />
                 </div>
-                <div className="col-lg-3 col-md-6">
-                  <div className="form-group">
-                    <label>Status</label>
-                    <select className="form-control" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
-                      <option value="draft">Draft</option>
-                      <option value="published">Published</option>
-                    </select>
+                <div className="col-lg-3 col-md-6 col-12 form-group">
+                  <label>Pass Mark</label>
+                  <input type="number" min="0" className="form-control" value={form.pass_mark} onChange={(event) => setForm({ ...form, pass_mark: event.target.value })} />
+                </div>
+                <div className="col-lg-3 col-md-6 col-12 form-group">
+                  <label>Status</label>
+                  <select className="form-control" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                  </select>
+                </div>
+                <div className="col-lg-3 col-md-6 col-12 form-group d-flex align-items-end">
+                  <div className="text-muted small">
+                    <strong>Session:</strong> {settings?.current_session?.name ?? "—"}<br />
+                    <strong>Semester:</strong> {settings?.current_semester?.name ?? "—"}
                   </div>
                 </div>
               </div>
-              <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving ? "Saving..." : "Create"}
+              <button type="submit" className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark" disabled={saving || !settings?.current_session_id || !settings?.current_semester_id}>
+                {saving ? "Saving..." : "Create Assessment"}
               </button>
             </form>
           </div>
@@ -459,13 +464,19 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
                         <td>
                           {view === "admin" && canManage ? (
                             <div className="cbt-actions">
+                              <Link className="btn btn-sm btn-outline-primary" href={`/cbt/${assessment.id}/questions`}>
+                                Questions
+                              </Link>
+                              <Link className="btn btn-sm btn-outline-secondary" href={`/cbt/results?assessment_id=${assessment.id}`}>
+                                Results
+                              </Link>
                               {assessment.status !== "published" && (
-                                <button type="button" className="btn btn-sm btn-primary" disabled={saving} onClick={() => handleStatusChange(assessment, "publish")}>
+                                <button type="button" className="btn btn-sm btn-success" disabled={saving} onClick={() => handleStatusChange(assessment, "publish")}>
                                   Publish
                                 </button>
                               )}
-                              {assessment.status !== "closed" && (
-                                <button type="button" className="btn btn-sm btn-outline-secondary" disabled={saving} onClick={() => handleStatusChange(assessment, "close")}>
+                              {assessment.status === "published" && (
+                                <button type="button" className="btn btn-sm btn-warning" disabled={saving} onClick={() => handleStatusChange(assessment, "close")}>
                                   Close
                                 </button>
                               )}
@@ -515,16 +526,17 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
                     <th>Score</th>
                     <th>Started</th>
                     <th>Submitted</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td colSpan={canManage ? 6 : 5}>Loading...</td>
+                      <td colSpan={canManage ? 7 : 6}>Loading...</td>
                     </tr>
                   ) : paginatedAttempts.length === 0 ? (
                     <tr>
-                      <td colSpan={canManage ? 6 : 5}>No attempts found.</td>
+                      <td colSpan={canManage ? 7 : 6}>No attempts found.</td>
                     </tr>
                   ) : (
                     paginatedAttempts.map((attempt) => (
@@ -533,13 +545,21 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
                           <strong>{attempt.assessment?.title || `Assessment #${attempt.assessment_id}`}</strong>
                           <div className="text-muted small">{attempt.assessment?.code}</div>
                         </td>
-                        {canManage && <td>{attempt.student?.name || `Student #${attempt.student_id}`}</td>}
+                        {canManage && <td>{attempt.student?.name || `Student #${attempt.student_id}`}<div className="text-muted small">{attempt.student?.matric_no}</div></td>}
                         <td>
                           <span className={`badge ${statusBadge(attempt.status)}`}>{attempt.status}</span>
                         </td>
                         <td>{formatScore(attempt)}</td>
                         <td>{formatDate(attempt.start_time)}</td>
                         <td>{formatDate(attempt.end_time)}</td>
+                        <td>
+                          <div className="cbt-actions">
+                            <Link className="btn btn-sm btn-outline-secondary" href={`/cbt/results/${attempt.id}`}>View</Link>
+                            {attempt.status === "submitted" && (
+                              <Link className="btn btn-sm btn-outline-primary" href={`/cbt/results/${attempt.id}/review`}>Review</Link>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))
                   )}

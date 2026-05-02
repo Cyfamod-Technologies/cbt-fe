@@ -50,7 +50,7 @@ function LoginInner() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/access";
 
-  const [form, setForm] = useState({ matric_no: "", name: "" });
+  const [form, setForm] = useState({ matric_no: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,8 +59,12 @@ function LoginInner() {
     setLoading(true);
     setError(null);
     try {
-      await studentAccess({ school_code: SCHOOL_CODE, ...form });
-      router.push(next);
+      const user = await studentAccess({ school_code: SCHOOL_CODE, ...form });
+      if (user.force_password_change) {
+        router.push(`/access/change-password?next=${encodeURIComponent(next)}`);
+      } else {
+        router.push(next);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to login.");
     } finally {
@@ -95,7 +99,7 @@ function LoginInner() {
           </div>
           <h2>Student Access</h2>
           <p className="text-muted mb-4">
-            Enter your matric number and first name to continue.
+            Enter your matric number and password to continue.
           </p>
           {error && <div className="alert alert-danger">{error}</div>}
           <form onSubmit={(e) => void handleSubmit(e)}>
@@ -112,15 +116,15 @@ function LoginInner() {
               />
             </div>
             <div className="form-group mb-4">
-              <label htmlFor="first-name">First Name</label>
+              <label htmlFor="password">Password</label>
               <input
-                id="first-name"
-                type="text"
+                id="password"
+                type="password"
                 className="form-control"
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                value={form.password}
+                onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                 required
-                placeholder="e.g. John"
+                placeholder="Enter your password"
               />
             </div>
             <button

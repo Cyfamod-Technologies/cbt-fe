@@ -38,6 +38,7 @@ export interface Course {
   school_id: number;
   code: string;
   title: string;
+  credit_unit: number;
   department_id: number;
   level_id: number | null;
   semester_id: number | null;
@@ -251,6 +252,7 @@ export async function listCourses() {
 export async function createCourse(payload: {
   code: string;
   title: string;
+  credit_unit?: number;
   department_id?: number | null;
   level_id?: number | null;
   semester_id?: number | null;
@@ -266,6 +268,7 @@ export async function updateCourse(
   payload: {
     code?: string;
     title?: string;
+    credit_unit?: number;
     department_id?: number;
     level_id?: number | null;
     semester_id?: number | null;

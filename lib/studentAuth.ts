@@ -11,6 +11,7 @@ export interface StudentUser {
   matric_no: string | null;
   department_id: number | null;
   level_id: number | null;
+  force_password_change?: boolean;
   department?: { id: number; name: string } | null;
   level?: { id: number; name: string } | null;
 }
@@ -44,10 +45,20 @@ export async function studentFetch<T = unknown>(
   return payload as T;
 }
 
+export async function studentChangePassword(payload: {
+  password: string;
+  password_confirmation: string;
+}): Promise<void> {
+  await studentFetch("/api/v1/auth/student-change-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function studentAccess(payload: {
   school_code: string;
   matric_no: string;
-  name: string;
+  password: string;
 }): Promise<StudentUser> {
   const response = await fetch(buildUrl("/api/v1/auth/student-access"), {
     method: "POST",
