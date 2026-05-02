@@ -81,6 +81,8 @@ interface QuestionBankPanelProps {
   courses: Course[];
 }
 
+const PAGE_SIZE = 10;
+
 export function QuestionBankPanel({ courses }: QuestionBankPanelProps) {
   const [selectedCourseId, setSelectedCourseId] = useState<string>("");
   const [items, setItems] = useState<QuestionBankItem[]>([]);
@@ -90,6 +92,7 @@ export function QuestionBankPanel({ courses }: QuestionBankPanelProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const isEditing = Boolean(activeItemId);
 
@@ -113,6 +116,7 @@ export function QuestionBankPanel({ courses }: QuestionBankPanelProps) {
 
   const handleCourseChange = (cid: string) => {
     setSelectedCourseId(cid);
+    setPage(1);
     void load(cid);
     resetForm(cid);
   };
@@ -242,6 +246,9 @@ export function QuestionBankPanel({ courses }: QuestionBankPanelProps) {
     return items.filter((i) => String(i.course_id) === selectedCourseId);
   }, [items, selectedCourseId]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+  const pagedItems = filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
     <div className="row gutters-20">
       <div className="col-xl-5 col-12">
@@ -274,23 +281,49 @@ export function QuestionBankPanel({ courses }: QuestionBankPanelProps) {
               ) : filteredItems.length === 0 ? (
                 <p className="text-muted mb-0">No questions in the bank{selectedCourseId ? " for this course" : ""}.</p>
               ) : (
-                <ul className="cbt-school-question-list">
-                  {filteredItems.map((item) => (
-                    <li key={item.id} className={`cbt-school-question-row ${activeItemId === item.id ? "active" : ""}`}>
-                      <div>
-                        <div className="font-weight-bold text-dark small">{item.question_text.slice(0, 70)}</div>
-                        <small className="text-muted">
-                          {questionTypeLabels[item.question_type]} · {item.marks} mark(s)
-                          {item.course ? ` · ${item.course.code || item.course.title}` : ""}
-                        </small>
+                <>
+                  <ul className="cbt-school-question-list">
+                    {pagedItems.map((item) => (
+                      <li key={item.id} className={`cbt-school-question-row ${activeItemId === item.id ? "active" : ""}`}>
+                        <div>
+                          <div className="font-weight-bold text-dark small">{item.question_text.slice(0, 70)}</div>
+                          <small className="text-muted">
+                            {questionTypeLabels[item.question_type]} · {item.marks} mark(s)
+                            {item.course ? ` · ${item.course.code || item.course.title}` : ""}
+                          </small>
+                        </div>
+                        <div className="cbt-school-question-actions">
+                          <button type="button" className="btn-fill-lg bg-blue-dark btn-hover-yellow" onClick={() => handleItemSelect(item)}>Edit</button>
+                          <button type="button" className="btn btn-danger" onClick={() => deleteItem(item.id)} disabled={saving}>Delete</button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {totalPages > 1 && (
+                    <div className="d-flex align-items-center justify-content-between mt-2 pt-2" style={{ borderTop: "1px solid #f0f0f0" }}>
+                      <span className="text-muted small">{filteredItems.length} question{filteredItems.length !== 1 ? "s" : ""} · Page {page} of {totalPages}</span>
+                      <div className="d-flex gap-1">
+                        <button
+                          type="button"
+                          className="btn-fill-lg bg-blue-dark btn-hover-yellow"
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                          disabled={page === 1}
+                        >
+                          ‹ Prev
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark"
+                          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={page === totalPages}
+                        >
+                          Next ›
+                        </button>
                       </div>
-                      <div className="cbt-school-question-actions">
-                        <button type="button" className="btn-fill-lg bg-blue-dark btn-hover-yellow" onClick={() => handleItemSelect(item)}>Edit</button>
-                        <button type="button" className="btn btn-sm btn-danger" onClick={() => deleteItem(item.id)} disabled={saving}>Del</button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -381,14 +414,14 @@ export function QuestionBankPanel({ courses }: QuestionBankPanelProps) {
                       <span>Correct</span>
                     </label>
                     {form.question_type !== "true_false" && (
-                      <button type="button" className="btn btn-sm btn-danger" onClick={() => {
+                      <button type="button" className="btn btn-danger" onClick={() => {
                         setForm((f) => ({ ...f, options: normalizeOptions(f.question_type, f.options.filter((_, idx) => idx !== i)) }));
                       }}>Remove</button>
                     )}
                   </div>
                 ))}
                 {form.question_type !== "true_false" && (
-                  <button type="button" className="btn btn-sm btn-outline-secondary mt-1" onClick={() => {
+                  <button type="button" className="btn-fill-lg bg-blue-dark btn-hover-yellow mt-2" onClick={() => {
                     setForm((f) => ({ ...f, options: [...f.options, { option_text: "", sort_order: f.options.length + 1, is_correct: false }] }));
                   }}>+ Add Option</button>
                 )}
