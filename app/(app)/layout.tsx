@@ -43,6 +43,7 @@ const assignLinks = [
 
 const cbtLinks = [
   { label: "Assessment Management", href: "/cbt/admin" },
+  { label: "Question Bank", href: "/cbt/question-bank" },
   { label: "Live Monitor", href: "/cbt/admin/live" },
   { label: "Results", href: "/cbt/results" },
   { label: "History", href: "/cbt/history" },

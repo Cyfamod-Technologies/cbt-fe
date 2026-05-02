@@ -109,6 +109,9 @@ export function QuizAdminDashboard() {
               <h3>All Assessments</h3>
             </div>
             <div className="cbt-actions">
+              <Link href="/cbt/question-bank" className="btn btn-outline-secondary">
+                Question Bank
+              </Link>
               <Link href="/cbt/admin/live" className="btn btn-outline-secondary">
                 Live Monitor
               </Link>

@@ -14,10 +14,12 @@ import {
   type AssessmentQuestionOption,
   type SaveQuestionPayload,
 } from "@/lib/cbt";
+import { importFromBank, listQuestionBankItems, type QuestionBankItem } from "@/lib/questionBank";
 import { statusBadgeClass } from "./cbt-utils";
 
 interface QuestionManagerProps {
   assessmentId: number;
+  openBankOnMount?: boolean;
 }
 
 type QuestionType = SaveQuestionPayload["question_type"];
@@ -276,7 +278,7 @@ function buildBulkPayload(record: Record<string, string>, sortOrder: number): Sa
   };
 }
 
-export function QuestionManager({ assessmentId }: QuestionManagerProps) {
+export function QuestionManager({ assessmentId, openBankOnMount = false }: QuestionManagerProps) {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
   const [questionForm, setQuestionForm] = useState<QuestionForm>(() => emptyQuestionForm(1));
@@ -288,6 +290,13 @@ export function QuestionManager({ assessmentId }: QuestionManagerProps) {
   const [savingQuestion, setSavingQuestion] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Question bank modal state
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [bankItems, setBankItems] = useState<QuestionBankItem[]>([]);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [selectedBankIds, setSelectedBankIds] = useState<Set<number>>(new Set());
+  const [bankImporting, setBankImporting] = useState(false);
 
   const nextQuestionOrder = questions.length + 1;
   const isEditingQuestion = Boolean(activeQuestionId);
@@ -313,7 +322,7 @@ export function QuestionManager({ assessmentId }: QuestionManagerProps) {
       setQuestionForm(emptyQuestionForm(questionData.length + 1));
       setActiveQuestionId(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load quiz questions.");
+      setError(err instanceof Error ? err.message : "Failed to load assessment questions.");
     } finally {
       setLoading(false);
     }
@@ -329,6 +338,12 @@ export function QuestionManager({ assessmentId }: QuestionManagerProps) {
   useEffect(() => {
     void load();
   }, [assessmentId]);
+
+  useEffect(() => {
+    if (!loading && openBankOnMount) {
+      void openBankModal();
+    }
+  }, [loading]);
 
   const resetQuestionForm = (sortOrder: number) => {
     setActiveQuestionId(null);
@@ -575,11 +590,51 @@ export function QuestionManager({ assessmentId }: QuestionManagerProps) {
     try {
       await publishAssessment(assessmentId);
       setAssessment(await getAssessment(assessmentId));
-      setSuccess("Quiz published successfully.");
+      setSuccess("Assessment published successfully.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to publish quiz.");
+      setError(err instanceof Error ? err.message : "Unable to publish assessment.");
     } finally {
       setSavingQuestion(false);
+    }
+  };
+
+  const openBankModal = async () => {
+    setShowBankModal(true);
+    setSelectedBankIds(new Set());
+    setBankLoading(true);
+    try {
+      const courseId = assessment?.course_id ?? null;
+      const data = await listQuestionBankItems(courseId);
+      setBankItems(data);
+    } catch {
+      setBankItems([]);
+    } finally {
+      setBankLoading(false);
+    }
+  };
+
+  const toggleBankItem = (id: number) => {
+    setSelectedBankIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleImportFromBank = async () => {
+    if (selectedBankIds.size === 0) return;
+    setBankImporting(true);
+    setError(null);
+    try {
+      await importFromBank(assessmentId, Array.from(selectedBankIds));
+      const refreshed = await refreshQuestions();
+      resetQuestionForm(refreshed.length + 1);
+      setSuccess(`${selectedBankIds.size} question(s) imported from bank.`);
+      setShowBankModal(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to import from bank.");
+    } finally {
+      setBankImporting(false);
     }
   };
 
@@ -596,18 +651,64 @@ export function QuestionManager({ assessmentId }: QuestionManagerProps) {
   if (!assessment) {
     return (
       <div className="d-flex align-items-center justify-content-center min-vh-100 bg-ash">
-        <div className="alert alert-danger">Quiz not found.</div>
+        <div className="alert alert-danger">Assessment not found.</div>
       </div>
     );
   }
 
   return (
     <div className="bg-ash min-vh-100">
+      {/* Bank selection modal */}
+      {showBankModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 1050, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 620, maxHeight: "85vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <h5 style={{ margin: 0, fontWeight: 700 }}>Select from Question Bank</h5>
+              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setShowBankModal(false)}>✕ Close</button>
+            </div>
+            <div style={{ overflowY: "auto", flex: 1, padding: "1rem 1.5rem" }}>
+              {bankLoading ? (
+                <p className="text-muted">Loading bank questions...</p>
+              ) : bankItems.length === 0 ? (
+                <p className="text-muted">No questions found in the bank{assessment?.course_id ? " for this course" : ""}. <Link href="/cbt/question-bank">Add questions to the bank</Link>.</p>
+              ) : (
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {bankItems.map((item) => (
+                    <li key={item.id} style={{ borderBottom: "1px solid #f0f0f0", padding: "0.75rem 0", display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+                      <input
+                        type="checkbox"
+                        style={{ marginTop: 4, flexShrink: 0 }}
+                        checked={selectedBankIds.has(item.id)}
+                        onChange={() => toggleBankItem(item.id)}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{item.question_text.slice(0, 100)}</div>
+                        <small className="text-muted">
+                          {item.question_type.replace("_", " ")} · {item.marks} mark(s)
+                          {item.course ? ` · ${item.course.code || item.course.title}` : ""}
+                        </small>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div style={{ padding: "1rem 1.5rem", borderTop: "1px solid #e5e7eb", display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <span className="text-muted small" style={{ alignSelf: "center" }}>{selectedBankIds.size} selected</span>
+              <button type="button" className="btn btn-outline-secondary" onClick={() => setShowBankModal(false)}>Cancel</button>
+              <button type="button" className="btn btn-primary" disabled={selectedBankIds.size === 0 || bankImporting} onClick={handleImportFromBank}>
+                {bankImporting ? "Importing..." : `Import ${selectedBankIds.size > 0 ? `(${selectedBankIds.size})` : ""}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="breadcrumbs-area quiz-fade-up">
-        <h3>Quiz Questions</h3>
+        <h3>Assessment Questions</h3>
         <ul>
           <li>
-            <Link href="/cbt/admin">Quiz Management</Link>
+            <Link href="/cbt/admin">Assessment Management</Link>
           </li>
           <li>Questions</li>
         </ul>
@@ -622,7 +723,7 @@ export function QuestionManager({ assessmentId }: QuestionManagerProps) {
             <div className="card-body">
               <div className="heading-layout1">
                 <div className="item-title">
-                  <h3>Manage Questions</h3>
+                  <h3>Manage Assessment Questions</h3>
                 </div>
                 <span className={statusBadgeClass(assessment.status)}>{assessment.status}</span>
               </div>
@@ -658,9 +759,14 @@ export function QuestionManager({ assessmentId }: QuestionManagerProps) {
                     )}
                   </div>
 
-                  <button type="button" className="btn btn-primary" onClick={() => resetQuestionForm(nextQuestionOrder)}>
-                    + New Question
-                  </button>
+                  <div className="cbt-actions mt-2">
+                    <button type="button" className="btn btn-primary" onClick={() => resetQuestionForm(nextQuestionOrder)}>
+                      + New Question
+                    </button>
+                    <button type="button" className="btn btn-outline-primary" onClick={openBankModal}>
+                      From Bank
+                    </button>
+                  </div>
 
                   <div className="cbt-school-panel mt-3">
                     <h5>Bulk Import Questions</h5>
@@ -791,7 +897,7 @@ export function QuestionManager({ assessmentId }: QuestionManagerProps) {
             <div className="card-body">
               <div className="heading-layout1">
                 <div className="item-title">
-                  <h3>Quiz Summary</h3>
+                  <h3>Assessment Summary</h3>
                 </div>
               </div>
               <ul className="cbt-summary-list">
@@ -821,10 +927,10 @@ export function QuestionManager({ assessmentId }: QuestionManagerProps) {
                   Back to Settings
                 </Link>
                 <Link className="btn btn-outline-secondary" href="/cbt/admin">
-                  Back to Quiz List
+                  Back to List
                 </Link>
                 <button type="button" className="btn btn-primary" onClick={publish} disabled={savingQuestion || questions.length === 0}>
-                  Publish Quiz
+                  Publish Assessment
                 </button>
               </div>
             </div>

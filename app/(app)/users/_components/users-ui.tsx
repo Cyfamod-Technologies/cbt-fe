@@ -8,13 +8,17 @@ import {
   createUser,
   deactivateUser,
   deleteUser,
+  listCourses,
   listDepartments,
   listLevels,
+  listStudentCourseEnrollments,
   listUsers,
   updateUser,
+  type Course,
   type Department,
   type Level,
   type SchoolUser,
+  type StudentCourseEnrollment,
 } from "@/lib/academic";
 import { useAuth } from "@/contexts/AuthContext";
 import { DeleteModal } from "@/app/_components/DeleteModal";
@@ -268,6 +272,14 @@ export function StudentsPage() {
   const [confirming, setConfirming] = useState(false);
   const canManageUsers = Boolean(user?.capabilities?.manage_users);
 
+  // Courses modal state
+  const [courseModal, setCourseModal] = useState<{
+    student: SchoolUser;
+    deptCourses: Course[];
+    enrollments: StudentCourseEnrollment[];
+  } | null>(null);
+  const [courseModalLoading, setCourseModalLoading] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -323,6 +335,27 @@ export function StudentsPage() {
     }
   };
 
+  const openCoursesModal = async (student: SchoolUser) => {
+    setCourseModalLoading(true);
+    setCourseModal({ student, deptCourses: [], enrollments: [] });
+    try {
+      const [allCourses, enrollments] = await Promise.all([
+        listCourses(),
+        listStudentCourseEnrollments(student.id),
+      ]);
+      const deptCourses = allCourses.filter((c) => {
+        const deptMatch = c.department_id === student.department_id;
+        const levelMatch = c.level_id === null || c.level_id === student.level_id;
+        return deptMatch && levelMatch;
+      });
+      setCourseModal({ student, deptCourses, enrollments });
+    } catch {
+      setCourseModal(null);
+    } finally {
+      setCourseModalLoading(false);
+    }
+  };
+
   const filteredStudents = useMemo(
     () =>
       students.filter((student) => {
@@ -358,6 +391,81 @@ export function StudentsPage() {
           confirming={confirming}
         />
       )}
+
+      {/* Registered Courses Modal */}
+      {courseModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1050, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ background: "#fff", borderRadius: 16, width: "100%", maxWidth: 640, maxHeight: "85vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+            <div style={{ padding: "1.25rem 1.5rem", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <h5 style={{ margin: 0, fontWeight: 700 }}>Registered Courses</h5>
+                <p style={{ margin: "0.2rem 0 0", fontSize: "0.85rem", color: "#6b7280" }}>
+                  {courseModal.student.name} · {courseModal.student.department?.name || "—"} · {courseModal.student.level?.name || "—"}
+                </p>
+              </div>
+              <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setCourseModal(null)}>✕</button>
+            </div>
+
+            <div style={{ overflowY: "auto", flex: 1, padding: "1rem 1.5rem" }}>
+              {courseModalLoading ? (
+                <p className="text-muted">Loading courses...</p>
+              ) : (
+                <>
+                  <h6 style={{ fontWeight: 700, marginBottom: "0.5rem" }}>
+                    Dept/Level Courses ({courseModal.deptCourses.length})
+                  </h6>
+                  {courseModal.deptCourses.length === 0 ? (
+                    <p className="text-muted small">No courses assigned to this department/level.</p>
+                  ) : (
+                    <table className="table" style={{ fontSize: "0.88rem" }}>
+                      <thead>
+                        <tr><th>Code</th><th>Title</th><th>Level</th><th>CU</th></tr>
+                      </thead>
+                      <tbody>
+                        {courseModal.deptCourses.map((c) => (
+                          <tr key={c.id}>
+                            <td><code>{c.code}</code></td>
+                            <td>{c.title}</td>
+                            <td>{c.level?.name || "Any"}</td>
+                            <td>{c.credit_unit || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+
+                  {courseModal.enrollments.length > 0 && (
+                    <>
+                      <h6 style={{ fontWeight: 700, margin: "1rem 0 0.5rem" }}>
+                        Additional Enrollments ({courseModal.enrollments.length})
+                      </h6>
+                      <table className="table" style={{ fontSize: "0.88rem" }}>
+                        <thead>
+                          <tr><th>Code</th><th>Title</th><th>Type</th></tr>
+                        </thead>
+                        <tbody>
+                          {courseModal.enrollments.map((e) => (
+                            <tr key={e.id}>
+                              <td><code>{e.course?.code || "—"}</code></td>
+                              <td>{e.course?.title || "—"}</td>
+                              <td><span className="badge badge-warning">{e.type}</span></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+
+            <div style={{ padding: "0.75rem 1.5rem", borderTop: "1px solid #e5e7eb", textAlign: "right" }}>
+              <button type="button" className="btn btn-outline-secondary" onClick={() => setCourseModal(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="breadcrumbs-area">
         <h3>Students</h3>
         <ul>
@@ -456,6 +564,7 @@ export function StudentsPage() {
                             <Link href={`/users/students/${student.id}`} className="btn btn-sm btn-warning">
                               View
                             </Link>
+
                             {canManageUsers && (
                               <Link href={`/users/students/${student.id}/edit`} className="btn btn-sm btn-secondary">
                                 Edit

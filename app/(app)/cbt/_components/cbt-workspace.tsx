@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { Pagination } from "@/app/_components/Pagination";
+import { QuestionBankPanel } from "./question-bank-panel";
 
 const PAGE_SIZE = 15;
 import { useRouter } from "next/navigation";
@@ -22,7 +23,7 @@ import {
   type CreateAssessmentPayload,
 } from "@/lib/cbt";
 
-type CbtView = "assessments" | "admin" | "results" | "history";
+type CbtView = "assessments" | "admin" | "results" | "history" | "question-bank";
 
 interface CbtWorkspaceProps {
   view: CbtView;
@@ -33,13 +34,15 @@ const viewLabels: Record<CbtView, string> = {
   admin: "Assessment Admin",
   results: "Results",
   history: "History",
+  "question-bank": "Question Bank",
 };
 
-const tabs = [
-  { label: "Assessments", href: "/cbt", view: "assessments" },
-  { label: "Admin", href: "/cbt/admin", view: "admin" },
-  { label: "Results", href: "/cbt/results", view: "results" },
-  { label: "History", href: "/cbt/history", view: "history" },
+const allTabs = [
+  { label: "Assessments", href: "/cbt", view: "assessments", manageOnly: false },
+  { label: "Admin", href: "/cbt/admin", view: "admin", manageOnly: true },
+  { label: "Results", href: "/cbt/results", view: "results", manageOnly: false },
+  { label: "History", href: "/cbt/history", view: "history", manageOnly: false },
+  { label: "Question Bank", href: "/cbt/question-bank", view: "question-bank", manageOnly: true },
 ] as const;
 
 const ASSESSMENT_TYPES = ["MOCK", "TEST", "EXAM"] as const;
@@ -112,7 +115,7 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
   const [error, setError] = useState<string | null>(null);
 
   const visibleTabs = useMemo(
-    () => tabs.filter((tab) => canManage || tab.view === "assessments" || tab.view === "history"),
+    () => allTabs.filter((tab) => !tab.manageOnly || canManage),
     [canManage],
   );
 
@@ -145,6 +148,15 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
         setLevels(levelData);
         setCourses(courseData);
         setSettings(settingsData);
+        return;
+      }
+
+      if (view === "question-bank") {
+        if (!canManage) {
+          setError("You do not have permission to access the question bank.");
+          return;
+        }
+        setCourses(await listCourses());
         return;
       }
 
@@ -506,6 +518,10 @@ export function CbtWorkspace({ view }: CbtWorkspaceProps) {
             />
           </div>
         </div>
+      )}
+
+      {view === "question-bank" && canManage && (
+        <QuestionBankPanel courses={courses} />
       )}
 
       {(view === "results" || view === "history") && (

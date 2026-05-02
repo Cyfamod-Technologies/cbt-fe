@@ -6,6 +6,16 @@ import { StudentAuthProvider, useStudentAuth } from "@/contexts/StudentAuthConte
 import { studentFetch } from "@/lib/studentAuth";
 import type { Assessment } from "@/lib/cbt";
 
+interface Course {
+  id: number;
+  code: string;
+  title: string;
+  credit_unit?: number | null;
+  department_id?: number | null;
+  level_id?: number | null;
+  level?: { id: number; name: string } | null;
+}
+
 const parseDate = (v?: string | null) => {
   if (!v) return null;
   const d = new Date(v);
@@ -44,6 +54,11 @@ function Portal() {
   const [courseFilter, setCourseFilter] = useState("all");
   const [search, setSearch] = useState("");
 
+  // Courses modal state
+  const [showCoursesModal, setShowCoursesModal] = useState(false);
+  const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+
   useEffect(() => {
     if (authLoading) return;
     if (!student) { router.replace("/access/login?next=/access"); return; }
@@ -53,6 +68,29 @@ function Portal() {
       .catch((e) => setError(e instanceof Error ? e.message : "Failed to load assessments."))
       .finally(() => setLoading(false));
   }, [authLoading, student, router]);
+
+  const openCoursesModal = async () => {
+    setShowCoursesModal(true);
+    if (allCourses.length > 0) return;
+    setCoursesLoading(true);
+    try {
+      const res = await studentFetch<{ data: Course[] }>("/api/v1/courses");
+      setAllCourses(res.data ?? []);
+    } catch {
+      // silently fail — modal will show empty state
+    } finally {
+      setCoursesLoading(false);
+    }
+  };
+
+  const deptLevelCourses = useMemo(() => {
+    if (!student) return [];
+    return allCourses.filter((c) => {
+      const deptMatch = c.department_id === student.department_id;
+      const levelMatch = c.level_id === null || c.level_id === undefined || c.level_id === student.level_id;
+      return deptMatch && levelMatch;
+    });
+  }, [allCourses, student]);
 
   const courseOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -145,7 +183,21 @@ function Portal() {
         .cbt-btn--primary:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(18,24,38,.2);}
         .cbt-btn--outline{background:#fff;border:1px solid var(--cbt-border);color:var(--cbt-ink);}
         .cbt-btn--outline:hover{border-color:#b5b0ab;background:#fafaf9;}
+        .cbt-btn--teal{background:#2a9d8f;color:#fff;}
+        .cbt-btn--teal:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(42,157,143,.3);}
         .cbt-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none;}
+        .cbt-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;
+          display:flex;align-items:center;justify-content:center;padding:20px;}
+        .cbt-modal{background:#fff;border-radius:20px;width:100%;max-width:560px;
+          max-height:85vh;display:flex;flex-direction:column;overflow:hidden;
+          box-shadow:0 24px 60px rgba(0,0,0,.2);}
+        .cbt-modal__header{padding:1.5rem 1.75rem 1.25rem;border-bottom:1px solid #f0f0f0;}
+        .cbt-modal__body{overflow-y:auto;flex:1;padding:1.25rem 1.75rem;}
+        .cbt-modal__footer{padding:1rem 1.75rem;border-top:1px solid #f0f0f0;}
+        .cbt-course-row{display:flex;align-items:center;gap:14px;padding:14px 16px;
+          border-radius:10px;border:1px solid #f0f0f0;margin-bottom:8px;background:#fafafa;}
+        .cbt-course-badge{font-size:14px;font-weight:700;background:#e0f2fe;color:#075985;
+          padding:5px 12px;border-radius:999px;white-space:nowrap;}
         @keyframes cbt-fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @media(max-width:600px){.cbt-topbar{gap:10px;}.cbt-topbar__name{display:none;}}
       `}</style>
@@ -174,7 +226,19 @@ function Portal() {
         {/* Student info */}
         {student && (
           <section className="cbt-card">
-            <h3>Welcome, {student.name.split(" ")[0]}</h3>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", marginBottom: "14px" }}>
+              <h3 style={{ margin: 0 }}>Welcome, {student.name.split(" ")[0]}</h3>
+              {(student.department_id || student.level_id) && (
+                <button
+                  type="button"
+                  className="cbt-btn cbt-btn--teal"
+                  style={{ fontSize: "13px", padding: "7px 16px" }}
+                  onClick={() => void openCoursesModal()}
+                >
+                  My Courses
+                </button>
+              )}
+            </div>
             <div className="cbt-info-grid">
               <div className="cbt-info-item"><span>Full Name</span><strong>{student.name}</strong></div>
               <div className="cbt-info-item"><span>Matric No</span><strong>{student.matric_no ?? "—"}</strong></div>
@@ -260,6 +324,75 @@ function Portal() {
           )}
         </section>
       </div>
+
+      {/* Courses modal */}
+      {showCoursesModal && (
+        <div className="cbt-modal-overlay" onClick={() => setShowCoursesModal(false)}>
+          <div className="cbt-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="cbt-modal__header">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <h4 style={{ margin: 0, fontWeight: 700, fontSize: "22px" }}>My Courses</h4>
+                  {student && (student.department?.name || student.level?.name) && (
+                    <p style={{ margin: "4px 0 0", fontSize: "15px", color: "#6b7280" }}>
+                      {student.department?.name ?? ""}{student.level?.name ? ` — ${student.level.name}` : ""}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCoursesModal(false)}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.4rem", color: "#6b7280", lineHeight: 1, padding: "4px 8px" }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="cbt-modal__body">
+              {coursesLoading ? (
+                <div style={{ textAlign: "center", padding: "2rem 0", color: "#6b7280" }}>Loading courses...</div>
+              ) : deptLevelCourses.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "2rem 0" }}>
+                  <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>📚</div>
+                  <p style={{ color: "#6b7280", margin: 0, fontSize: "0.9rem" }}>
+                    No courses found for your department and level.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <p style={{ fontSize: "15px", color: "#6b7280", marginBottom: "12px" }}>
+                    {deptLevelCourses.length} course{deptLevelCourses.length !== 1 ? "s" : ""} in your programme
+                  </p>
+                  {deptLevelCourses.map((course) => (
+                    <div key={course.id} className="cbt-course-row">
+                      <span className="cbt-course-badge">{course.code}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: "16px" }}>{course.title}</div>
+                        <div style={{ fontSize: "14px", color: "#6b7280", marginTop: 3 }}>
+                          {course.level?.name ?? student?.level?.name ?? ""}
+                          {course.credit_unit ? ` · ${course.credit_unit} CU` : ""}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+
+            <div className="cbt-modal__footer">
+              <button
+                type="button"
+                className="cbt-btn cbt-btn--outline"
+                style={{ width: "100%" }}
+                onClick={() => setShowCoursesModal(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

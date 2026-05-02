@@ -42,7 +42,8 @@ export default function CreateStudentPage() {
 
   const loadOptions = useCallback(async () => {
     try {
-      setDepartments(await listDepartments());
+      const depts = await listDepartments();
+      setDepartments(depts);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load options.");
     }
@@ -67,14 +68,8 @@ export default function CreateStudentPage() {
     event.preventDefault();
     setError(null);
 
-    if (!form.name.trim()) {
-      setError("Full name is required.");
-      return;
-    }
-    if (!form.password.trim()) {
-      setError("Password is required.");
-      return;
-    }
+    if (!form.name.trim()) { setError("Full name is required."); return; }
+    if (!form.password.trim()) { setError("Password is required."); return; }
 
     setSubmitting(true);
     try {
@@ -125,40 +120,19 @@ export default function CreateStudentPage() {
             <div className="row">
               <div className="col-xl-3 col-lg-6 col-12 form-group">
                 <label>Full Name *</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={form.name}
-                  onChange={(e) => setField("name", e.target.value)}
-                  required
-                />
+                <input type="text" className="form-control" value={form.name} onChange={(e) => setField("name", e.target.value)} required />
               </div>
               <div className="col-xl-3 col-lg-6 col-12 form-group">
                 <label>Matric No</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={form.matric_no}
-                  onChange={(e) => setField("matric_no", e.target.value)}
-                  placeholder="e.g. MAT/2023/001"
-                />
+                <input type="text" className="form-control" value={form.matric_no} onChange={(e) => setField("matric_no", e.target.value)} placeholder="e.g. MAT/2023/001" />
               </div>
               <div className="col-xl-3 col-lg-6 col-12 form-group">
                 <label>Student ID No</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={form.student_id_no}
-                  onChange={(e) => setField("student_id_no", e.target.value)}
-                />
+                <input type="text" className="form-control" value={form.student_id_no} onChange={(e) => setField("student_id_no", e.target.value)} />
               </div>
               <div className="col-xl-3 col-lg-6 col-12 form-group">
                 <label>Department</label>
-                <select
-                  className="form-control"
-                  value={form.department_id}
-                  onChange={(e) => handleDeptChange(e.target.value)}
-                >
+                <select className="form-control" value={form.department_id} onChange={(e) => handleDeptChange(e.target.value)}>
                   <option value="">Select Department</option>
                   {departments.map((d) => (
                     <option key={d.id} value={d.id}>{d.name}</option>
@@ -174,9 +148,7 @@ export default function CreateStudentPage() {
                   disabled={!form.department_id || availableLevels.length === 0}
                 >
                   <option value="">
-                    {form.department_id && availableLevels.length === 0
-                      ? "No levels assigned to this dept"
-                      : "Select Level"}
+                    {form.department_id && availableLevels.length === 0 ? "No levels assigned to this dept" : "Select Level"}
                   </option>
                   {availableLevels.map((l) => (
                     <option key={l.id} value={l.id}>{l.name}</option>
@@ -185,55 +157,29 @@ export default function CreateStudentPage() {
               </div>
               <div className="col-xl-3 col-lg-6 col-12 form-group">
                 <label>Email</label>
-                <input
-                  type="email"
-                  className="form-control"
-                  value={form.email}
-                  onChange={(e) => setField("email", e.target.value)}
-                />
+                <input type="email" className="form-control" value={form.email} onChange={(e) => setField("email", e.target.value)} />
               </div>
               <div className="col-xl-3 col-lg-6 col-12 form-group">
                 <label>Phone</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={form.phone}
-                  onChange={(e) => setField("phone", e.target.value)}
-                />
+                <input type="text" className="form-control" value={form.phone} onChange={(e) => setField("phone", e.target.value)} />
               </div>
               <div className="col-xl-3 col-lg-6 col-12 form-group">
                 <label>Password *</label>
-                <input
-                  type="password"
-                  className="form-control"
-                  value={form.password}
-                  onChange={(e) => setField("password", e.target.value)}
-                  required
-                />
+                <input type="password" className="form-control" value={form.password} onChange={(e) => setField("password", e.target.value)} required />
               </div>
               <div className="col-xl-3 col-lg-6 col-12 form-group">
                 <label>Status *</label>
-                <select
-                  className="form-control"
-                  value={form.status}
-                  onChange={(e) => setField("status", e.target.value)}
-                  required
-                >
+                <select className="form-control" value={form.status} onChange={(e) => setField("status", e.target.value)} required>
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
               </div>
+
               <div className="col-12 form-group mg-t-8">
-                <button
-                  type="submit"
-                  className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark"
-                  disabled={submitting}
-                >
+                <button type="submit" className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark" disabled={submitting}>
                   {submitting ? "Saving..." : "Save"}
                 </button>
-                <Link href="/users/students" className="btn-fill-lg bg-blue-dark btn-hover-yellow ml-3">
-                  Cancel
-                </Link>
+                <Link href="/users/students" className="btn-fill-lg bg-blue-dark btn-hover-yellow ml-3">Cancel</Link>
               </div>
             </div>
           </form>
