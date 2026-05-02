@@ -167,22 +167,22 @@ export function QuizAdminDashboard() {
                       </td>
                       <td>
                         <div className="cbt-actions">
-                          <Link className="btn btn-sm btn-outline-secondary" href={`/cbt/admin/${assessment.id}/questions`}>
+                          <Link className="btn-fill-lg bg-blue-dark btn-hover-yellow" href={`/cbt/admin/${assessment.id}/questions`}>
                             Questions
                           </Link>
-                          <Link className="btn btn-sm btn-outline-secondary" href={`/cbt/admin/${assessment.id}/results`}>
+                          <Link className="btn-fill-lg bg-blue-dark btn-hover-yellow" href={`/cbt/admin/${assessment.id}/results`}>
                             Results
                           </Link>
-                          <Link className="btn btn-sm btn-outline-secondary" href={`/cbt/admin/${assessment.id}/edit`}>
+                          <Link className="btn-fill-lg bg-blue-dark btn-hover-yellow" href={`/cbt/admin/${assessment.id}/edit`}>
                             Edit
                           </Link>
                           {assessment.status !== "published" && (
-                            <button type="button" className="btn btn-sm btn-primary" disabled={busyId === assessment.id} onClick={() => updateStatus(assessment, "publish")}>
+                            <button type="button" className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark" disabled={busyId === assessment.id} onClick={() => updateStatus(assessment, "publish")}>
                               Publish
                             </button>
                           )}
                           {assessment.status === "published" && (
-                            <button type="button" className="btn btn-sm btn-outline-secondary" disabled={busyId === assessment.id} onClick={() => updateStatus(assessment, "close")}>
+                            <button type="button" className="btn-fill-lg bg-blue-dark btn-hover-yellow" disabled={busyId === assessment.id} onClick={() => updateStatus(assessment, "close")}>
                               Close
                             </button>
                           )}

@@ -285,7 +285,7 @@ export function QuestionBankPanel({ courses }: QuestionBankPanelProps) {
                         </small>
                       </div>
                       <div className="cbt-school-question-actions">
-                        <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => handleItemSelect(item)}>Edit</button>
+                        <button type="button" className="btn-fill-lg bg-blue-dark btn-hover-yellow" onClick={() => handleItemSelect(item)}>Edit</button>
                         <button type="button" className="btn btn-sm btn-danger" onClick={() => deleteItem(item.id)} disabled={saving}>Del</button>
                       </div>
                     </li>
@@ -294,7 +294,7 @@ export function QuestionBankPanel({ courses }: QuestionBankPanelProps) {
               )}
             </div>
 
-            <button type="button" className="btn btn-primary mt-2" onClick={() => resetForm()}>
+            <button type="button" className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark mt-2" onClick={() => resetForm()}>
               + New Question
             </button>
           </div>
@@ -396,8 +396,8 @@ export function QuestionBankPanel({ courses }: QuestionBankPanelProps) {
             )}
 
             <div className="cbt-school-form-footer">
-              <button type="button" className="btn btn-outline-secondary" onClick={() => resetForm()}>Reset</button>
-              <button type="button" className="btn btn-primary" onClick={saveItem} disabled={saving}>
+              <button type="button" className="btn-fill-lg bg-blue-dark btn-hover-yellow" onClick={() => resetForm()}>Reset</button>
+              <button type="button" className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark" onClick={saveItem} disabled={saving}>
                 {saving ? "Saving..." : "Save to Bank"}
               </button>
             </div>
