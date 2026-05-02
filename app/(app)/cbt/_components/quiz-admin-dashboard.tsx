@@ -109,13 +109,13 @@ export function QuizAdminDashboard() {
               <h3>All Assessments</h3>
             </div>
             <div className="cbt-actions">
-              <Link href="/cbt/question-bank" className="btn btn-outline-secondary">
+              <Link href="/cbt/question-bank" className="btn-fill-lg bg-blue-dark btn-hover-yellow">
                 Question Bank
               </Link>
-              <Link href="/cbt/admin/live" className="btn btn-outline-secondary">
+              <Link href="/cbt/admin/live" className="btn-fill-lg bg-blue-dark btn-hover-yellow">
                 Live Monitor
               </Link>
-              <Link href="/cbt/admin/create" className="btn btn-primary">
+              <Link href="/cbt/admin/create" className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark">
                 + Create New Assessment
               </Link>
             </div>
