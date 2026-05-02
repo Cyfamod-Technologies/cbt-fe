@@ -427,12 +427,12 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
               <div className="cbt-actions mg-t-20">
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark"
                   disabled={saving || !settings?.current_session_id || !settings?.current_semester_id}
                 >
                   {saving ? "Saving..." : editing ? "Save Changes" : "Create & Add Questions"}
                 </button>
-                <Link href="/cbt/admin" className="btn btn-outline-secondary">Cancel</Link>
+                <Link href="/cbt/admin" className="btn-fill-lg bg-blue-dark btn-hover-yellow">Cancel</Link>
               </div>
             </form>
           )}

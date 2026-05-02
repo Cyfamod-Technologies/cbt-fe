@@ -61,7 +61,7 @@ function LoginInner() {
     try {
       const user = await studentAccess({ school_code: SCHOOL_CODE, ...form });
       if (user.force_password_change) {
-        router.push(`/access/change-password?next=${encodeURIComponent(next)}`);
+        router.push(`/access/change-password?next=${encodeURIComponent("/access/courses")}`);
       } else {
         router.push(next);
       }
