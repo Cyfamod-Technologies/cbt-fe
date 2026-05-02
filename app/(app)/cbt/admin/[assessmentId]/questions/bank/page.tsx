@@ -171,8 +171,8 @@ export default function BankSelectionPage() {
           ) : filtered.length === 0 ? (
             <div className="text-center py-5">
               <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>📭</div>
-              <p className="text-muted mb-2">No questions found in the bank{courseFilter ? " for this course" : ""}.</p>
-              <Link href="/cbt/question-bank" className="btn btn-outline-primary btn-sm">
+              <p className="text-muted mb-3" style={{ fontSize: "15px" }}>No questions found in the bank{courseFilter ? " for this course" : ""}.</p>
+              <Link href="/cbt/question-bank" className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark">
                 Add Questions to Bank
               </Link>
             </div>
