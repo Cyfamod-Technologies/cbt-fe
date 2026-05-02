@@ -191,7 +191,7 @@ function ResultsInner() {
             </button>
           )}
           <button onClick={() => router.push("/access")} className="cbt-btn cbt-btn--ghost">
-            Back to assessments
+            Back to dashboard
           </button>
         </div>
       </div>
