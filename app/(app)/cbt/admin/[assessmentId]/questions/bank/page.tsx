@@ -124,8 +124,8 @@ export default function BankSelectionPage() {
             </div>
             <div className="col-lg-2 col-12 form-group mb-0 d-flex align-items-end">
               <div className="cbt-actions w-100">
-                <button type="button" className="btn btn-sm btn-outline-secondary" onClick={selectAll}>All</button>
-                <button type="button" className="btn btn-sm btn-outline-secondary" onClick={clearAll}>None</button>
+                <button type="button" className="btn-fill-lg bg-blue-dark btn-hover-yellow" onClick={selectAll}>All</button>
+                <button type="button" className="btn-fill-lg bg-blue-dark btn-hover-yellow" onClick={clearAll}>None</button>
               </div>
             </div>
           </div>
@@ -139,7 +139,7 @@ export default function BankSelectionPage() {
                   · {existingCount} question{existingCount !== 1 ? "s" : ""} already added
                 </span>
               </div>
-              <Link href={`/cbt/admin/${assessmentId}/questions`} className="btn btn-sm btn-outline-secondary">
+              <Link href={`/cbt/admin/${assessmentId}/questions`} className="btn-fill-lg bg-blue-dark btn-hover-yellow">
                 ← Back to Questions
               </Link>
             </div>
@@ -151,12 +151,12 @@ export default function BankSelectionPage() {
               {loading ? "Loading..." : `${filtered.length} question${filtered.length !== 1 ? "s" : ""} in bank · ${selectedIds.size} selected`}
             </span>
             <div className="cbt-actions">
-              <Link href={`/cbt/admin/${assessmentId}/questions`} className="btn btn-outline-secondary">
+              <Link href={`/cbt/admin/${assessmentId}/questions`} className="btn-fill-lg bg-blue-dark btn-hover-yellow">
                 Cancel
               </Link>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark"
                 disabled={selectedIds.size === 0 || importing}
                 onClick={() => void handleImport()}
               >
@@ -244,7 +244,7 @@ export default function BankSelectionPage() {
               </span>
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn-fill-lg btn-gradient-yellow btn-hover-bluedark"
                 disabled={importing}
                 onClick={() => void handleImport()}
               >

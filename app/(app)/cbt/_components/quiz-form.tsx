@@ -74,7 +74,7 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [createdId, setCreatedId] = useState<number | null>(null);
+
 
   useEffect(() => {
     const load = async () => {
@@ -148,8 +148,18 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
     });
   }, [courses, form.department_id, form.level_id]);
 
+  const isTestOrExam = form.assessment_type === "TEST" || form.assessment_type === "EXAM";
+
   const update = <K extends keyof typeof defaultForm>(key: K, value: (typeof defaultForm)[K]) => {
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const next = { ...f, [key]: value };
+      if (key === "assessment_type" && (value === "TEST" || value === "EXAM")) {
+        next.show_answers = false;
+        next.show_score = false;
+        next.allow_review = false;
+      }
+      return next;
+    });
   };
 
   const handleDeptChange = (value: string) => {
@@ -196,11 +206,7 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
       const saved = assessmentId
         ? await updateAssessment(assessmentId, buildPayload())
         : await createAssessment(buildPayload());
-      if (assessmentId) {
-        router.push(`/cbt/admin/${saved.id}/questions`);
-      } else {
-        setCreatedId(saved.id);
-      }
+      router.push(`/cbt/admin/${saved.id}/questions/bank`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to save assessment.");
     } finally {
@@ -208,44 +214,6 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
     }
   };
 
-  if (createdId !== null) {
-    return (
-      <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
-        <div className="card" style={{ maxWidth: 480, width: "100%", borderRadius: 20, boxShadow: "0 20px 60px rgba(0,0,0,0.12)", overflow: "hidden" }}>
-          <div style={{ background: "linear-gradient(135deg, #2563eb 0%, #4f46e5 100%)", padding: "2rem", textAlign: "center", color: "#fff" }}>
-            <div style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>✅</div>
-            <h4 style={{ margin: 0, fontWeight: 700 }}>Assessment Created!</h4>
-            <p style={{ margin: "0.5rem 0 0", opacity: 0.85, fontSize: "0.9rem" }}>
-              Would you like to add questions from the Question Bank?
-            </p>
-          </div>
-          <div className="card-body" style={{ padding: "1.5rem" }}>
-            <p className="text-muted small mb-4" style={{ textAlign: "center" }}>
-              The Question Bank lets you reuse pre-saved questions for this course. You can also add questions manually.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                style={{ width: "100%", padding: "0.75rem", fontWeight: 600 }}
-                onClick={() => router.push(`/cbt/admin/${createdId}/questions?bank=1`)}
-              >
-                Select from Question Bank
-              </button>
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                style={{ width: "100%" }}
-                onClick={() => router.push(`/cbt/admin/${createdId}/questions`)}
-              >
-                Add Questions Manually
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
@@ -439,16 +407,21 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
                   ["shuffle_options", "Shuffle options"],
                   ["allow_review", "Allow review after submission"],
                   ["allow_multiple_attempts", "Allow multiple attempts"],
-                ] as [keyof typeof defaultForm, string][]).map(([key, label]) => (
-                  <label className="cbt-switch" key={key}>
-                    <input
-                      type="checkbox"
-                      checked={Boolean(form[key])}
-                      onChange={(e) => update(key, e.target.checked as never)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
+                ] as [keyof typeof defaultForm, string][])
+                  .filter(([key]) => {
+                    if (isTestOrExam && (key === "show_answers" || key === "show_score" || key === "allow_review")) return false;
+                    return true;
+                  })
+                  .map(([key, label]) => (
+                    <label className="cbt-switch" key={key}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(form[key])}
+                        onChange={(e) => update(key, e.target.checked as never)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
               </div>
 
               <div className="cbt-actions mg-t-20">

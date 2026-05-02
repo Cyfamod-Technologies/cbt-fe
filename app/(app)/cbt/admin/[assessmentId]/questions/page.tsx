@@ -123,30 +123,6 @@ export default function QuestionsPage() {
         </div>
       </div>
 
-      {/* Assessment header — shown below the choice cards */}
-      {assessment && (
-        <div className="card mb-4" style={{ borderLeft: "4px solid #4f46e5" }}>
-          <div className="card-body py-3">
-            <div className="d-flex align-items-center justify-content-between flex-wrap gap-2">
-              <div>
-                <strong style={{ fontSize: "1.05rem" }}>{assessment.title}</strong>
-                <div className="text-muted small mt-1">
-                  {assessment.department?.name}
-                  {assessment.level ? ` · ${assessment.level.name}` : ""}
-                  {assessment.course ? ` · ${assessment.course.code}` : ""}
-                  <span className={`badge ml-2 ${assessment.status === "published" ? "badge-success" : assessment.status === "closed" ? "badge-danger" : "badge-warning"}`}>
-                    {assessment.status}
-                  </span>
-                </div>
-              </div>
-              <div className="text-muted small">
-                <strong>{loading ? "…" : questions.length}</strong> question{questions.length !== 1 ? "s" : ""} added
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Existing questions list */}
       {!loading && questions.length > 0 && (
         <div className="card">
@@ -155,19 +131,19 @@ export default function QuestionsPage() {
               <div className="item-title">
                 <h3>Questions Added ({questions.length})</h3>
               </div>
-              <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setMode("new")}>
+              <button type="button" className="btn-fill-lg bg-blue-dark btn-hover-yellow" onClick={() => setMode("new")}>
                 Edit / Manage
               </button>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {questions.map((q, i) => (
-                <div key={q.id} style={{ display: "flex", gap: "0.75rem", padding: "0.65rem 0.85rem", background: "#f8fafc", borderRadius: 8, alignItems: "flex-start" }}>
-                  <span style={{ fontWeight: 700, color: "#6b7280", fontSize: "0.8rem", minWidth: 22, paddingTop: 2 }}>{i + 1}.</span>
+                <div key={q.id} style={{ display: "flex", gap: "0.75rem", padding: "0.85rem 1rem", background: "#f8fafc", borderRadius: 10, alignItems: "flex-start" }}>
+                  <span style={{ fontWeight: 700, color: "#6b7280", fontSize: "16px", minWidth: 28, paddingTop: 2 }}>{i + 1}.</span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "0.88rem", fontWeight: 500 }}>
+                    <div style={{ fontSize: "16px", fontWeight: 600, marginBottom: "6px", lineHeight: 1.5 }}>
                       {q.question_text.length > 100 ? `${q.question_text.slice(0, 100)}…` : q.question_text}
                     </div>
-                    <div className="text-muted" style={{ fontSize: "0.75rem", marginTop: 2 }}>
+                    <div className="text-muted" style={{ fontSize: "14px", marginTop: 2 }}>
                       {q.question_type.replace("_", " ")} · {q.marks} mark{Number(q.marks) !== 1 ? "s" : ""}
                     </div>
                   </div>
