@@ -223,7 +223,6 @@ function StaffDashboardHome() {
   const [staffProfile, setStaffProfile] = useState<Staff | null>(null);
   const [assignments, setAssignments] = useState<StaffCourseAssignment[]>([]);
   const [settings, setSettings] = useState<SchoolSettings | null>(null);
-  const [students, setStudents] = useState<SchoolUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -241,13 +240,9 @@ function StaffDashboardHome() {
         staffList.find((staff) => staff.email.toLowerCase() === user.email.toLowerCase()) ||
         null;
 
-      const [staffAssignments, deptStudents] = await Promise.all([
-        profile ? listStaffCourseAssignments(profile.id) : Promise.resolve([]),
-        profile?.department_id ? listUsers("student").catch(() => []) : Promise.resolve([]),
-      ]);
+      const staffAssignments = profile ? await listStaffCourseAssignments(profile.id) : [];
       setStaffProfile(profile);
       setAssignments(staffAssignments);
-      setStudents(deptStudents);
       setSettings(schoolSettings);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Unable to load staff dashboard data.");
@@ -279,7 +274,6 @@ function StaffDashboardHome() {
     { label: "Assigned Courses", value: activeAssignments.length, icon: "C", accent: "bg-light-green" },
     { label: "Departments", value: departments, icon: "D", accent: "bg-skyblue" },
     { label: "Levels", value: levels, icon: "L", accent: "bg-yellow" },
-    { label: "Dept. Students", value: students.length, icon: "S", accent: "bg-violet-blue" },
   ];
 
   return (
@@ -406,59 +400,7 @@ function StaffDashboardHome() {
           </div>
         </div>
 
-        <div className="row mt-4">
-          <div className="col-12">
-            <div className="card height-auto">
-              <div className="card-body">
-                <div className="heading-layout1">
-                  <div className="item-title">
-                    <h3>Students — {staffProfile?.department?.name ?? "Your Department"}</h3>
-                  </div>
-                  <Link href="/cbt/admin" className="btn btn-sm btn-outline-primary">
-                    CBT Management
-                  </Link>
-                </div>
-                {!staffProfile?.department_id ? (
-                  <div className="alert alert-warning mb-0" role="alert">
-                    No department assigned to your profile. Contact your administrator.
-                  </div>
-                ) : students.length === 0 ? (
-                  <div className="alert alert-info mb-0" role="alert">
-                    No students found in your department.
-                  </div>
-                ) : (
-                  <div className="table-responsive">
-                    <table className="table">
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                          <th>Matric No.</th>
-                          <th>Level</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {students.map((student) => (
-                          <tr key={student.id}>
-                            <td>{student.name}</td>
-                            <td>{student.matric_no ?? "—"}</td>
-                            <td>{student.level?.name ?? "—"}</td>
-                            <td>
-                              <span className={`badge ${student.status === "active" ? "bg-success" : "bg-secondary"}`}>
-                                {student.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-        </>
+</>
       )}
     </>
   );
