@@ -382,11 +382,32 @@ export async function updateUser(
     password: string;
     role: "staff" | "student";
     status: string;
+    force_password_change: boolean;
   }>,
 ) {
   return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/users/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function updateProfile(payload: {
+  name?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+  password_confirmation?: string;
+}) {
+  return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/me`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  })).data;
+}
+
+export async function resetStudentPassword(userId: number) {
+  return (await apiFetch<ItemResponse<SchoolUser>>(`/api/v1/users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify({ password: "123456", force_password_change: true }),
   })).data;
 }
 

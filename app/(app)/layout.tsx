@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
@@ -260,7 +259,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="dashboard-page-one">
         <aside className="sidebar-main sidebar-menu-one sidebar-expand-md sidebar-color">
-          <div className="mobile-sidebar-header d-md-none">
+          {/* <div className="mobile-sidebar-header d-md-none">
             <div className="header-logo">
               <Link href="/dashboard" className="sidebar-brand-link d-flex align-items-center">
                 <Image
@@ -277,7 +276,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </span>
               </Link>
             </div>
-          </div>
+          </div> */}
           <div className="sidebar-menu-content">
             <ul className="nav nav-sidebar-menu sidebar-toggle-view cbt-sidebar-menu">
               <li className="sidebar-section-label">CBT Workspace</li>
@@ -434,6 +433,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </li>
                 );
               })}
+              <li className={`nav-item ${pathname === "/profile" ? "active" : ""}`}>
+                <Link href="/profile" className="nav-link" onClick={closeSidebarGroups}>
+                  <span>My Profile</span>
+                </Link>
+              </li>
             </ul>
           </div>
         </aside>

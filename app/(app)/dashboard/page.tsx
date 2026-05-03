@@ -11,9 +11,7 @@ import {
   listSessions,
   listStaff,
   listStaffCourseAssignments,
-  listUsers,
   type SchoolSettings,
-  type SchoolUser,
   type Staff,
   type StaffCourseAssignment,
 } from "@/lib/academic";

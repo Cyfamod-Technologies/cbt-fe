@@ -11,6 +11,7 @@ import {
   listCourses,
   listStudentCourseEnrollments,
   listUsers,
+  resetStudentPassword,
   type Course,
   type SchoolSettings,
   type SchoolUser,
@@ -39,6 +40,7 @@ export default function StudentDetailPage() {
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [selectedType, setSelectedType] = useState("carryover");
   const [submitting, setSubmitting] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,6 +118,19 @@ export default function StudentDetailPage() {
       setFeedback({ type: "success", message: "Course removed." });
     } catch (err) {
       setFeedback({ type: "danger", message: err instanceof Error ? err.message : "Failed to remove course." });
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!window.confirm(`Reset password for ${student?.name ?? "this student"} to default (123456)? They will be required to change it on next login.`)) return;
+    setResettingPassword(true);
+    try {
+      await resetStudentPassword(studentId);
+      setFeedback({ type: "success", message: "Password reset to 123456. Student will be prompted to change it on next login." });
+    } catch (err) {
+      setFeedback({ type: "danger", message: err instanceof Error ? err.message : "Failed to reset password." });
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -226,9 +241,19 @@ export default function StudentDetailPage() {
               </div>
             </div>
             {canManage && (
-              <Link href={`/users/students/${student.id}/edit`} className="btn btn-outline-primary">
-                Edit
-              </Link>
+              <div className="d-flex gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline-warning"
+                  disabled={resettingPassword}
+                  onClick={() => void handleResetPassword()}
+                >
+                  {resettingPassword ? "Resetting..." : "Reset Password"}
+                </button>
+                <Link href={`/users/students/${student.id}/edit`} className="btn btn-outline-primary">
+                  Edit
+                </Link>
+              </div>
             )}
           </div>
 
