@@ -358,6 +358,33 @@ export function StudentsPage() {
     }
   };
 
+  const exportStudents = () => {
+    const rows = filteredStudents.map((s) => [
+      s.matric_no ?? "",
+      s.student_id_no ?? "",
+      s.name,
+      s.email ?? "",
+      s.phone ?? "",
+      s.gender ?? "",
+      s.department?.name ?? "",
+      s.level?.name ?? "",
+      s.status,
+    ]);
+    const header = ["Matric No", "Student ID No", "Full Name", "Email", "Phone", "Gender", "Department", "Level", "Status"];
+    const csv = [header, ...rows]
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const dept = departments.find((d) => String(d.id) === filters.departmentId)?.name ?? "all-depts";
+    const lvl = levels.find((l) => String(l.id) === filters.levelId)?.name ?? "all-levels";
+    a.href = url;
+    a.download = `students-${dept}-${lvl}.csv`.replace(/\s+/g, "-").toLowerCase();
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const filteredStudents = useMemo(
     () =>
       students.filter((student) => {
@@ -491,9 +518,9 @@ export function StudentsPage() {
                   Add Student
                 </Link>
               )}
-              <a href="/templates/student-bulk-upload-template.csv" download className="btn btn-lg btn-outline-secondary">
-                Download Template
-              </a>
+              <button type="button" className="btn btn-lg btn-outline-secondary" onClick={exportStudents} disabled={filteredStudents.length === 0}>
+                Export Students {filteredStudents.length > 0 ? `(${filteredStudents.length})` : ""}
+              </button>
             </div>
           </div>
           <div className="student-filter-grid">
