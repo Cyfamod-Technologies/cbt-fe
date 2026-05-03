@@ -523,19 +523,24 @@ textarea {
 }
 
 .mobile-header-action {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border: 0;
   background: transparent;
-  color: #333333;
+  color: #042c54;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0;
+  border-radius: 8px;
+}
+
+.mobile-header-action:hover {
+  background: rgba(4, 44, 84, 0.08);
 }
 
 .mobile-header-action i {
-  font-size: 18px;
+  font-size: 22px;
 }
 
 .user-account {
@@ -1590,16 +1595,17 @@ textarea {
   }
 
   .nav-bar-header-one {
-    min-width: 0;
-    flex: 1;
+    min-width: 0 !important;
+    flex: 1 !important;
     flex-shrink: 0;
-    padding: 0 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    padding: 0 0.5rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
     gap: 0.5rem;
-    background: white;
+    background: white !important;
     overflow: hidden;
+    margin: 0 !important;
   }
 
   .nav-bar-header-one .header-logo-text,

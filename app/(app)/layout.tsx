@@ -220,9 +220,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </button>
           </div>
           <div className="mobile-header-actions">
-            <button type="button" className="mobile-header-action" aria-label="Quick action">
-              <i className="far fa-arrow-alt-circle-down" aria-hidden="true" />
-            </button>
             <button type="button" className="mobile-header-action" onClick={toggleSidebar} aria-label="Toggle sidebar">
               <i className="fas fa-bars" aria-hidden="true" />
             </button>
