@@ -24,6 +24,8 @@ export interface CbtUser {
   email: string;
   role: string;
   status: string;
+  department_id?: number | null;
+  department?: { id: number; name: string } | null;
   capabilities: CbtCapabilities;
   [key: string]: unknown;
 }

@@ -14,6 +14,7 @@ import {
   type SchoolSettings,
 } from "@/lib/academic";
 import { createAssessment, getAssessment, updateAssessment, type Assessment, type CreateAssessmentPayload } from "@/lib/cbt";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface QuizFormProps {
   assessmentId?: number;
@@ -64,7 +65,9 @@ function extractTypeFromCode(code: string): AssessmentType {
 
 export function QuizForm({ assessmentId }: QuizFormProps) {
   const router = useRouter();
+  const { user } = useAuth();
   const editing = Boolean(assessmentId);
+  const isStaff = user?.role === "staff";
 
   const [form, setForm] = useState(defaultForm);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -93,6 +96,11 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
         setLevels(levelData);
         setCourses(courseData);
         setSettings(settingsData);
+
+        // For staff creating a new assessment, pre-select their department
+        if (!assessment && user?.role === "staff" && user.department_id) {
+          setForm((f) => ({ ...f, department_id: String(user.department_id) }));
+        }
 
         if (assessment) {
           setForm({
@@ -133,6 +141,13 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
     ? `${selectedCourse.code}-${form.assessment_type}`
     : `ASMT-${form.assessment_type}`;
   const autoTitle = autoCode;
+
+  const visibleDepartments = useMemo(() => {
+    if (isStaff && user?.department_id) {
+      return departments.filter((d) => d.id === user.department_id);
+    }
+    return departments;
+  }, [departments, isStaff, user?.department_id]);
 
   const availableLevels = useMemo(() => {
     if (!form.department_id) return levels;
@@ -247,9 +262,10 @@ export function QuizForm({ assessmentId }: QuizFormProps) {
                     value={form.department_id}
                     onChange={(e) => handleDeptChange(e.target.value)}
                     required
+                    disabled={isStaff && visibleDepartments.length === 1}
                   >
                     <option value="">Select department</option>
-                    {departments.map((d) => (
+                    {visibleDepartments.map((d) => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
                   </select>

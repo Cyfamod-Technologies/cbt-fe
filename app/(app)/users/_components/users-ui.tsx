@@ -262,12 +262,14 @@ export function UsersPage({ role, title }: { role: Role; title: string }) {
 
 export function StudentsPage() {
   const { user } = useAuth();
+  const isStaff = user?.role === "staff";
+  const staffDeptId = isStaff && user?.department_id ? String(user.department_id) : "";
   const [students, setStudents] = useState<SchoolUser[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [levels, setLevels] = useState<Level[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<Feedback>(null);
-  const [filters, setFilters] = useState({ search: "", departmentId: "", levelId: "", status: "all" });
+  const [filters, setFilters] = useState({ search: "", departmentId: staffDeptId, levelId: "", status: "all" });
   const [deletePending, setDeletePending] = useState<DeletePending>(null);
   const [confirming, setConfirming] = useState(false);
   const canManageUsers = Boolean(user?.capabilities?.manage_users);
@@ -501,10 +503,16 @@ export function StudentsPage() {
             </div>
             <div className="form-group">
               <label>Department</label>
-              <select className="form-control" value={filters.departmentId} onChange={(e) => setFilters((c) => ({ ...c, departmentId: e.target.value }))}>
-                <option value="">All departments</option>
-                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
+              {isStaff && staffDeptId ? (
+                <div className="form-control" style={{ background: "#f8fafc", color: "#374151", fontWeight: 500 }}>
+                  {departments.find((d) => String(d.id) === staffDeptId)?.name ?? "Your Department"}
+                </div>
+              ) : (
+                <select className="form-control" value={filters.departmentId} onChange={(e) => setFilters((c) => ({ ...c, departmentId: e.target.value }))}>
+                  <option value="">All departments</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              )}
             </div>
             <div className="form-group">
               <label>Level</label>
